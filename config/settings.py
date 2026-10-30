@@ -166,6 +166,12 @@ PASSWORD_HASHERS = [
 # Django REST Framework
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.accounts.authentication.BearerAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "apps.accounts.permissions.IsAuthenticatedUser",
+    ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
     ],
