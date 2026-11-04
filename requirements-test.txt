@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Test-only dependencies. Keep these out of production installs.
+pytest>=8,<9
+pytest-django>=4.9,<5
+factory_boy>=3.3,<4
