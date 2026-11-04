@@ -88,6 +88,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -132,6 +133,7 @@ if DB_ENGINE in {"postgres", "postgresql"}:
             "HOST": os.getenv("DB_HOST", "127.0.0.1"),
             "PORT": os.getenv("DB_PORT", "5432"),
             "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
+            "CONN_HEALTH_CHECKS": True,
         }
     }
 elif DB_ENGINE == "sqlite":
@@ -140,6 +142,7 @@ elif DB_ENGINE == "sqlite":
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": os.getenv("SQLITE_PATH", str(BASE_DIR / "db.sqlite3")),
             "OPTIONS": {"timeout": 20},
+            "CONN_HEALTH_CHECKS": True,
         }
     }
 else:
@@ -148,6 +151,26 @@ else:
     )
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ---------------------------------------------------------------------------
+# Cache (Redis is recommended for multi-worker production deployments)
+# ---------------------------------------------------------------------------
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "persu-local",
+        }
+    }
 
 # ---------------------------------------------------------------------------
 # Authentication
@@ -231,6 +254,8 @@ CORS_URLS_REGEX = r"^/api/"
 # Security
 # ---------------------------------------------------------------------------
 SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
+# Allow internal load-balancer health checks without an HTTPS redirect.
+SECURE_REDIRECT_EXEMPT = [r"^healthz$"]
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
@@ -263,6 +288,20 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+            if not DEBUG
+            else "django.contrib.staticfiles.storage.StaticFilesStorage"
+        ),
+    },
+}
+WHITENOISE_MAX_AGE = 0 if DEBUG else 31536000
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"

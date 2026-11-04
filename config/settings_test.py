@@ -17,6 +17,21 @@ CSRF_COOKIE_SECURE = False
 
 ALLOWED_HOSTS = ["testserver", "localhost", "127.0.0.1"]
 
+# Tests do not serve static assets; keep WhiteNoise out of the test middleware.
+MIDDLEWARE = [
+    middleware
+    for middleware in MIDDLEWARE
+    if middleware != "whitenoise.middleware.WhiteNoiseMiddleware"
+]
+
+# Tests do not run collectstatic; use the plain storage backend.
+STORAGES = {
+    **STORAGES,
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 # Argon2 is intentionally slow; password hashing is not what these API tests
 # measure. Use MD5 only in the test settings.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

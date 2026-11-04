@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Production/test deployment dependencies.
+gunicorn>=23,<24
+psycopg[binary]>=3.2,<4
+redis>=5,<7

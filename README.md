@@ -14,7 +14,9 @@ Technologies used:
 - Django REST Framework 3.16
 - Argon2id password hashing
 - HS256 access JWTs and opaque, rotating refresh tokens
-- SQLite for local development, with optional PostgreSQL support
+- SQLite for local development, with PostgreSQL for deployment
+- Redis-backed throttling for multi-worker deployments
+- Gunicorn and WhiteNoise for production serving
 - django-cors-headers for the browser-facing `/api/*` routes
 
 Project layout:
@@ -24,6 +26,9 @@ config/                 Django project settings and root URL configuration
 apps/accounts/          User model, phone normalization, tokens, auth API
 apps/resources/         Authenticated profile API
 apps/common/            Health endpoint and shared error handling
+Dockerfile              Production image using Gunicorn and WhiteNoise
+docker-compose.yml      PostgreSQL, Redis, and web services for test deployment
+requirements-prod.txt   Production runtime dependencies
 ```
 
 ## Installation and Setup
@@ -42,8 +47,17 @@ source .venv/bin/activate
 
 ### 2. Install dependencies
 
+For local development:
+
 ```bash
 pip install -r requirements.txt
+```
+
+For a production-like deployment, use `requirements-prod.txt` instead. It
+includes Gunicorn, PostgreSQL support, and Redis support.
+
+```bash
+pip install -r requirements-prod.txt
 ```
 
 ### 3. Configure environment variables
@@ -72,7 +86,8 @@ SQLite is the default and requires no external service:
 python manage.py migrate
 ```
 
-To use PostgreSQL, install a driver and set the database variables:
+To use PostgreSQL, install `requirements-prod.txt` (which includes the driver)
+or install the driver directly, then set the database variables:
 
 ```bash
 pip install "psycopg[binary]"
@@ -107,10 +122,108 @@ python manage.py createsuperuser
 ```bash
 python manage.py check
 python manage.py test
+
+pip install -r requirements-test.txt
+pytest
 ```
 
 For a complete local walkthrough of registration, login, token refresh, CORS,
 and testing, see [LOCAL_USAGE.md](LOCAL_USAGE.md).
+
+## Production-Ready Test Deployment
+
+The repository includes a production-oriented stack: Gunicorn, WhiteNoise,
+PostgreSQL, and Redis. The Docker setup is intended for a test or staging
+environment; use HTTPS and a managed database for production.
+
+### Docker Compose
+
+1. Copy the production environment template and replace every placeholder:
+
+   ```bash
+   cp .env.production.example .env.production
+   ```
+
+2. Generate independent secrets for `DJANGO_SECRET_KEY` and `AUTH_JWT_SECRET`:
+
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(64))"
+   ```
+
+3. Set `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and
+   `CSRF_TRUSTED_ORIGINS` to the test frontend/API origins.
+
+4. Build and start PostgreSQL, Redis, and the API:
+
+   ```bash
+   docker compose --env-file .env.production up --build
+   ```
+
+   The API listens on `http://localhost:8000` by default. Change `WEB_PORT` in
+   `.env.production` if that port is already in use.
+
+5. Check the service and create an admin account:
+
+   ```bash
+   curl http://localhost:8000/healthz
+   docker compose --env-file .env.production exec web python manage.py createsuperuser
+   ```
+
+6. Stop the services:
+
+   ```bash
+   docker compose --env-file .env.production down
+   ```
+
+Use `down -v` only when you intentionally want to delete the PostgreSQL volume.
+
+### Non-container deployment
+
+Set the production environment variables, then run:
+
+```bash
+pip install -r requirements-prod.txt
+python manage.py migrate
+python manage.py collectstatic --noinput
+gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+```
+
+Run `python manage.py check --deploy` before exposing the service. Terminate
+TLS at a trusted reverse proxy or load balancer. Set
+`DJANGO_BEHIND_PROXY=true` when the proxy supplies `X-Forwarded-Proto`, and set
+`DJANGO_SECURE_SSL_REDIRECT=true` once HTTPS is available. The `/healthz`
+endpoint is exempt from the HTTPS redirect so internal health checks work.
+
+### Environment variables
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DJANGO_DEBUG` | `true` | Set to `false` for any shared or production-like deployment. |
+| `DJANGO_SECRET_KEY` | Development fallback | Required when `DJANGO_DEBUG=false`; use at least 32 random characters. |
+| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1,testserver` | Comma-separated hostnames accepted by Django. |
+| `DJANGO_SECURE_SSL_REDIRECT` | `true` when not debugging | Redirect HTTP requests to HTTPS. |
+| `DJANGO_BEHIND_PROXY` | `false` | Trust `X-Forwarded-Proto` and `X-Forwarded-Host` from a proxy. |
+| `DJANGO_SECURE_HSTS_SECONDS` | `31536000` when not debugging | HSTS lifetime; use `0` for plain HTTP testing. |
+| `CSRF_TRUSTED_ORIGINS` | Empty | Comma-separated trusted origins for Django admin and form posts. |
+| `AUTH_JWT_SECRET` | Development fallback | Required when `DJANGO_DEBUG=false`; must differ from `DJANGO_SECRET_KEY`. |
+| `AUTH_JWT_ISSUER` | `https://api.example.com` | JWT issuer claim. |
+| `AUTH_JWT_AUDIENCE` | `https://app.example.com` | JWT audience claim. |
+| `AUTH_ACCESS_TOKEN_TTL_SECONDS` | `900` | Access-token lifetime in seconds. |
+| `AUTH_REFRESH_TOKEN_TTL_SECONDS` | `2592000` | Refresh-token lifetime in seconds (30 days). |
+| `CORS_ALLOWED_ORIGINS` | `https://app.example.com` | Comma-separated browser origins allowed for `/api/*`. |
+| `DB_ENGINE` | `sqlite` | Use `postgresql` for PostgreSQL. |
+| `SQLITE_PATH` | `db.sqlite3` | SQLite database path when using SQLite. |
+| `DB_NAME` | `persu` | PostgreSQL database name. |
+| `DB_USER` | Empty | PostgreSQL user. |
+| `DB_PASSWORD` | Empty | PostgreSQL password. |
+| `DB_HOST` | `127.0.0.1` | PostgreSQL host. |
+| `DB_PORT` | `5432` | PostgreSQL port. |
+| `DB_CONN_MAX_AGE` | `60` | Persistent database connection lifetime in seconds. |
+| `REDIS_URL` | Empty (local memory) | Redis URL for shared throttling cache, for example `redis://redis:6379/1`. |
+| `DJANGO_LOG_LEVEL` | `INFO` | Application and Django log level. |
+| `WEB_PORT` | `8000` | Host port published by Docker Compose. |
+| `GUNICORN_WORKERS` | `3` | Gunicorn worker count in the container. |
+| `GUNICORN_TIMEOUT` | `60` | Gunicorn request timeout in seconds. |
 
 ## API Endpoints
 
