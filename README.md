@@ -1,176 +1,204 @@
 # Persu Backend
 
-Django + Django REST Framework backend for phone-based authentication and
-authenticated resource APIs.
+## Project Overview
 
-## Stack
+Persu Backend is a Django REST Framework API for phone-based authentication and
+authenticated user profiles. Users are identified by a normalized E.164 phone
+number and can register, log in, refresh sessions, read their profile, and update
+their nickname and avatar.
+
+Technologies used:
 
 - Python 3.13
 - Django 5.2 LTS
-- Django REST Framework
+- Django REST Framework 3.16
 - Argon2id password hashing
-- HS256 access JWTs + opaque rotating refresh tokens
-- SQLite for local development (PostgreSQL supported through environment settings)
+- HS256 access JWTs and opaque, rotating refresh tokens
+- SQLite for local development, with optional PostgreSQL support
+- django-cors-headers for the browser-facing `/api/*` routes
 
-## Project layout
+Project layout:
 
 ```text
-config/                 Django project configuration
-apps/common/            Shared API errors and health endpoint
-apps/accounts/          User model, phone normalization, tokens, auth API, tests
-apps/resources/         Authenticated browser-facing resource API, tests
+config/                 Django project settings and root URL configuration
+apps/accounts/          User model, phone normalization, tokens, auth API
+apps/resources/         Authenticated profile API
+apps/common/            Health endpoint and shared error handling
 ```
 
-## Local setup
+## Installation and Setup
+
+### 1. Create and activate a virtual environment
 
 ```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+python -m venv .venv
 
-$env:DJANGO_SECRET_KEY = (python -c "import secrets; print(secrets.token_urlsafe(64))")
-$env:AUTH_JWT_SECRET = (python -c "import secrets; print(secrets.token_urlsafe(64))")
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+
+# macOS/Linux
+source .venv/bin/activate
+```
+
+### 2. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Configure environment variables
+
+Configuration comes from process environment variables. `.env.example` lists
+the supported variables. The project does not load `.env` automatically, so set
+the variables in your shell or process manager.
+
+For local development, the application can start with its development
+fallbacks. Setting explicit secrets is recommended:
+
+```powershell
+$env:DJANGO_DEBUG = "true"
+$env:DJANGO_SECRET_KEY = "replace-with-a-long-random-value"
+$env:AUTH_JWT_SECRET = "replace-with-a-different-long-random-value"
+$env:DJANGO_ALLOWED_HOSTS = "localhost,127.0.0.1,testserver"
+```
+
+On macOS/Linux, use `export NAME=value` instead.
+
+### 4. Set up the database
+
+SQLite is the default and requires no external service:
+
+```bash
+python manage.py migrate
+```
+
+To use PostgreSQL, install a driver and set the database variables:
+
+```bash
+pip install "psycopg[binary]"
+
+export DB_ENGINE=postgresql
+export DB_NAME=persu
+export DB_USER=persu
+export DB_PASSWORD=replace-me
+export DB_HOST=127.0.0.1
+export DB_PORT=5432
 
 python manage.py migrate
+```
+
+### 5. Run the development server
+
+```bash
 python manage.py runserver
 ```
 
-Settings are read directly from process environment variables. `.env.example`
-documents the supported variables; export them in your shell or inject them
-through your deployment platform.
+The API is available at `http://127.0.0.1:8000`. The liveness endpoint is
+`GET /healthz`.
 
-Run checks and tests:
+Optional admin account:
 
-```powershell
+```bash
+python manage.py createsuperuser
+```
+
+### 6. Run checks and tests
+
+```bash
 python manage.py check
 python manage.py test
 ```
 
-The liveness endpoint is `GET /healthz`.
+For a complete local walkthrough of registration, login, token refresh, CORS,
+and testing, see [LOCAL_USAGE.md](LOCAL_USAGE.md).
 
-For a full local walkthrough, including the auth flow, CORS checks, and test
-commands, see [LOCAL_USAGE.md](LOCAL_USAGE.md).
+## API Endpoints
 
-## Configuration
+Paths are exact and have no trailing slash. `/admin/` is the Django admin HTML
+interface and is not part of the JSON API.
 
-All secrets and deployment settings come from process environment variables.
-See `.env.example` for the full list. Production refuses to start without
-`DJANGO_SECRET_KEY` and `AUTH_JWT_SECRET` when `DJANGO_DEBUG=false`; both must
-be at least 32 characters.
-
-PostgreSQL is selected with `DB_ENGINE=postgresql` plus the `DB_*` variables.
-Install a PostgreSQL driver (`psycopg[binary]`) when using it.
-
-## Token design
-
-- **Access token**: HS256 JWT, 15-minute lifetime, claims `sub`, `typ`, `iss`,
-  `aud`, `iat`, `exp`, `jti`. Signature, expiry, issuer, audience, type, and
-  required claims are validated on every request.
-- **Refresh token**: opaque 32-byte base64url value, 30-day sliding lifetime.
-  Only its SHA-256 hash is stored. Each refresh rotates the token within the
-  same family and links the old row through `replaced_by`.
-- **Reuse detection**: presenting a revoked or already-rotated refresh token
-  revokes the entire family and returns 401.
-- **One session per user**: login/register revoke all existing refresh tokens
-  before creating a new family. The user row is locked to serialize concurrent
-  logins.
-- **Atomicity**: rotation and family revocation use `transaction.atomic()` and
-  `select_for_update()` row locks.
-- **Stateless access**: logout and a second login revoke refresh tokens
-  immediately, but already-issued access tokens remain valid until they expire
-  (at most 15 minutes).
-
-DRF uses `apps.accounts.authentication.BearerAuthentication` by default and
-`apps.accounts.permissions.IsAuthenticatedUser` for protected views. The
-health endpoint explicitly opts out.
-
-## Auth API
-
-All auth routes are server-to-server, unauthenticated (except session), and
-excluded from CORS.
-
-| Method | Path | Success | Notes |
+| Method | Endpoint | Description | Authentication |
 | --- | --- | --- | --- |
-| POST | `/auth/check` | 200 `{exists}` | Normalizes phone first |
-| POST | `/auth/login` | 200 `{accessToken, refreshToken, user}` | Generic 401 on failure |
-| POST | `/auth/register` | 201 `{accessToken, refreshToken, user}` | 409 if phone exists |
-| POST | `/auth/refresh` | 200 `{accessToken, refreshToken}` | Rotates; reuse revokes family |
-| POST | `/auth/logout` | 204 | Idempotent family revocation |
-| GET | `/auth/session` | 200 `{user}` | Requires Bearer access token |
-| POST | `/auth/otp/send` | 200 `{success: true}` | Stub |
-| POST | `/auth/otp/verify` | 200 `{success: true}` | Stub; ignores code |
+| GET | `/healthz` | Liveness check; returns `{"status": "ok"}`. | None |
+| POST | `/auth/check` | Checks whether a phone number is registered; returns `{"exists": true}` or `{"exists": false}`. | None; throttled at 10/min per normalized phone. |
+| POST | `/auth/login` | Authenticates a phone number and password; returns an access token, refresh token, and user. | None; throttled at 5/min per normalized phone. |
+| POST | `/auth/register` | Creates a user; returns `201` with an access token, refresh token, and user. | None; throttled at 5/min per normalized phone. |
+| POST | `/auth/refresh` | Rotates a refresh token; returns a new access token and refresh token. | None; requires `refreshToken` in the body; throttled at 20/min per token. |
+| POST | `/auth/logout` | Revokes the refresh-token family; returns `204` with an empty body. | None; requires `refreshToken` in the body; idempotent; throttled at 30/min per token. |
+| GET | `/auth/session` | Returns the authenticated user. | Bearer access token; active user required. |
+| POST | `/auth/otp/send` | OTP send stub; returns `{"success": true}` without sending an SMS. | None; throttled at 5/min per normalized phone. |
+| POST | `/auth/otp/verify` | OTP verify stub; accepts any or absent code and returns `{"success": true}`. | None; throttled at 10/min per normalized phone. |
+| GET | `/api/me` | Returns the authenticated user's profile. | Bearer access token; active user required; CORS enabled. |
+| PATCH | `/api/me` | Updates `nickName` and/or `avatar`; returns the updated user. | Bearer access token; active user required; CORS enabled. |
 
-Request bodies use `countryCode`, `phone`, `password`, and `refreshToken`.
-Successful login/register responses include the public user shape:
+### Request fields
+
+Phone-based endpoints are `POST /auth/check`, `/auth/login`, `/auth/register`,
+`/auth/otp/send`, and `/auth/otp/verify`.
+
+| Field | Required | Rules |
+| --- | --- | --- |
+| `countryCode` | Yes | String, max 8. ISO country code such as `US`, or a dialing code such as `+1`. |
+| `phone` | Yes | String, max 32. Normalized to E.164 before lookup or storage. |
+| `password` | Login and register | String, max 128; whitespace-only values are rejected. |
+| `code` | OTP verify only | Optional string, max 16; currently ignored by the stub. |
+
+Token endpoints (`/auth/refresh` and `/auth/logout`) require:
+
+| Field | Required | Rules |
+| --- | --- | --- |
+| `refreshToken` | Yes | String, max 512; whitespace-only values are rejected. |
+
+`PATCH /api/me` accepts only these writable fields:
+
+| Field | Required | Rules |
+| --- | --- | --- |
+| `nickName` | No | String, max 64; an empty string clears it. |
+| `avatar` | No | URL string, max 500; an empty string clears it. |
+
+Identity, phone, and password fields are read-only for this endpoint. Sending
+`{}` is a valid no-op.
+
+### Responses
+
+Login and registration return:
 
 ```json
 {
-  "accessToken": "...",
-  "refreshToken": "...",
+  "accessToken": "<access token>",
+  "refreshToken": "<refresh token>",
   "user": {
-    "id": "uuid",
+    "id": "<uuid>",
     "phone": "+12024561111"
   }
 }
 ```
 
-`nickName` and `avatar` are included when set.
+`/auth/refresh` returns `accessToken` and `refreshToken` without `user`.
+`/auth/session` and `/api/me` return `{"user": ...}`. The user object contains
+`id`, `phone`, and, when set, `nickName` and `avatar`; empty optional fields are
+omitted.
 
-### Rate limits
+`/auth/logout` returns `204` with no body. The OTP stubs return
+`{"success": true}`. Unknown paths return `404`.
 
-Auth throttling is scoped to the normalized phone (or refresh token) rather
-than the calling IP, because the Next server calls these routes server-to-server
-and all users can share one IP. Invalid phone numbers fall back to the caller IP
-so random invalid inputs cannot create unlimited buckets. Limits are configured
-in `REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]`.
+### Status codes
 
-Django's default local-memory cache is used for local development. For a
-multi-process production deployment, configure a shared Django cache (for
-example Redis) so throttling is enforced globally, and consider IP-level limits
-at the edge as an additional layer.
+| Status | Meaning |
+| --- | --- |
+| 200 | Successful read, login, refresh, check, update, or OTP stub response. |
+| 201 | Successful registration. |
+| 204 | Successful logout. |
+| 400 | Invalid request data (`validation_error`) or malformed JSON (`invalid_json`). |
+| 401 | Missing or invalid access token, invalid login credentials, or invalid/expired refresh token. |
+| 404 | Unknown route (`not_found`). |
+| 405 | HTTP method not allowed for the route. |
+| 409 | Phone number already registered (`phone_already_registered`). |
+| 415 | Unsupported request media type. |
+| 429 | Rate limit exceeded (`rate_limited`). |
+| 500 | Unhandled server error (`internal_error`). |
 
-## Resource API
-
-Browser-facing routes live under `/api/*` and require a Bearer access token.
-They are also the only routes with CORS enabled.
-
-| Method | Path | Success | Notes |
-| --- | --- | --- | --- |
-| GET | `/api/me` | 200 `{user}` | Current user from the access token |
-| PATCH | `/api/me` | 200 `{user}` | Updates `nickName` and/or `avatar` |
-
-`PATCH` accepts only `nickName` and `avatar`; identity and phone fields are
-read-only. Sending an empty string clears an optional field. Invalid avatar
-URLs return a `validation_error`, and missing/expired tokens return 401.
-
-Example:
-
-```http
-GET /api/me HTTP/1.1
-Host: api.example.com
-Authorization: Bearer <access token>
-Origin: https://app.example.com
-```
-
-### CORS
-
-CORS is restricted to `/api/*`; `/auth/*` never emits CORS headers because
-those routes are server-to-server.
-
-- Allowed origin: `https://app.example.com` (override with
-  `CORS_ALLOWED_ORIGINS`, comma-separated)
-- Allowed headers: `Authorization` and `Content-Type` only
-- Allowed methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`
-- Credentials: disabled (`CORS_ALLOW_CREDENTIALS = False`)
-- Preflight requests are answered without requiring an access token
-- CORS headers are present on authenticated responses, 401s, validation
-  errors, and 404s under `/api/`
-
-## API conventions
-
-- Successful responses use JSON with camelCase fields where required by the
-  client contract.
-- Every error uses a consistent envelope:
+Errors use a consistent envelope:
 
 ```json
 {
@@ -181,41 +209,92 @@ those routes are server-to-server.
 }
 ```
 
-- Auth routes live under `/auth/*` and are server-to-server.
-- Browser-facing resource routes live under `/api/*` and use Bearer access
-  tokens.
-- CORS is enabled only for `/api/*`, never for `/auth/*`.
-- Unknown routes and unhandled server errors also use this envelope (JSON
-  404/500 handlers).
+## Authentication and Authorization
 
-## Deployment checklist
+The API uses Bearer access JWTs. Send the token in the request header:
 
-- Set `DJANGO_DEBUG=false`.
-- Set independent `DJANGO_SECRET_KEY` and `AUTH_JWT_SECRET` values.
-- Set `DJANGO_ALLOWED_HOSTS` and `CORS_ALLOWED_ORIGINS`.
-- Serve over HTTPS and keep `DJANGO_SECURE_SSL_REDIRECT` and HSTS enabled.
-- Set `DJANGO_BEHIND_PROXY=true` only behind a trusted reverse proxy.
-- Use PostgreSQL (`DB_ENGINE=postgresql`) and run `python manage.py migrate`.
-- Configure a shared cache for throttling in multi-process deployments.
-- Run `python manage.py check --deploy` and `python manage.py test`.
-- Monitor 401/429 rates and plan cleanup of expired refresh-token rows.
-- Do not rely on logout for immediate access-token revocation.
+```http
+Authorization: Bearer <access token>
+```
 
-## Delivery plan
+- Access tokens are HS256 JWTs with a default lifetime of 15 minutes.
+- Refresh tokens are opaque values with a default lifetime of 30 days. Only
+  their SHA-256 hashes are stored, and each successful refresh rotates the
+  token.
+- Login and registration create a new refresh-token family and revoke the
+  user's previous refresh tokens. Presenting a revoked or reused refresh token
+  revokes the whole family.
+- Logout revokes the refresh-token family. Access tokens are stateless and
+  remain valid until they expire, even after logout.
+- `/auth/session`, `GET /api/me`, and `PATCH /api/me` require a valid Bearer
+  access token for an active user.
+- Public endpoints explicitly allow anonymous access. Auth endpoints are
+  intended for server-to-server calls and do not emit CORS headers.
+- CORS is enabled only for `/api/*`. The default allowed origin is
+  `https://app.example.com` and can be changed with `CORS_ALLOWED_ORIGINS`.
+- There are no role-specific API permissions. Any active authenticated user can
+  read and update only their own profile.
+- Missing, expired, malformed, or wrong-type tokens return `401` with an
+  `unauthorized` error code.
 
-1. **Foundation** (complete): Django project, environment settings, custom
-   phone-first `User` model, Argon2id hashing, DRF error envelope, health
-   endpoint, migrations, and initial tests.
-2. **Token infrastructure** (complete): access JWT service, refresh-token
-   families, atomic rotation/revocation, DRF Bearer authentication and
-   permissions.
-3. **Auth API** (complete): `/auth/check`, `/auth/login`, `/auth/register`,
-   `/auth/refresh`, `/auth/logout`, `/auth/session`, OTP stubs, validation,
-   and throttling.
-4. **CORS and resources** (complete): authenticated `/api/me` resource,
-   profile updates, CORS policy restricted to `/api/*`, and preflight/header
-   tests.
-5. **Hardening and delivery** (complete): end-to-end acceptance tests, JSON
-   404/500 handlers, invalid-input throttling fallback, tighter CORS headers,
-   production secret checks, security review, deployment checklist, and final
-   QA.
+## Git Workflow
+
+The repository uses four branch types:
+
+- `main`: production-ready code. It is updated only by intentional releases
+  from `develop`.
+- `develop`: integration branch for ongoing development.
+- `feature/*`: individual features or development tasks, created from
+  `develop` and merged back into `develop`.
+- `fix/*`: bug fixes, created from `develop` and merged back into `develop`.
+  A production hotfix may be branched from `main` and merged back into both
+  `main` and `develop`.
+
+Do not commit development work directly to `main`. Create a feature or fix
+branch and merge it into `develop` through a pull request or a reviewed local
+merge.
+
+Start a new feature:
+
+```bash
+git switch develop
+git pull --ff-only origin develop
+git switch -c feature/my-feature
+```
+
+Make changes, then commit and push:
+
+```bash
+git add .
+git commit -m "feat: describe the change"
+git push -u origin feature/my-feature
+```
+
+Merge completed work into `develop`:
+
+```bash
+git switch develop
+git pull --ff-only origin develop
+git merge --no-ff feature/my-feature
+git push origin develop
+```
+
+Start a bug fix the same way:
+
+```bash
+git switch develop
+git pull --ff-only origin develop
+git switch -c fix/my-bug
+```
+
+Publish a release by merging `develop` into `main`:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git merge --no-ff develop
+git push origin main
+```
+
+After a branch is merged, keep it until it is no longer needed; branch cleanup is
+a separate, explicit decision.
