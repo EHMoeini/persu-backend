@@ -489,19 +489,21 @@ test if the behavior is changed.
 
 Defaults:
 
-- only `https://app.example.com` is allowed;
+- only the configured local test origins are allowed by default;
 - allowed headers are exactly `authorization` and `content-type`;
 - credentials are disabled;
 - preflight cache is 24 hours;
 - there is no wildcard or subdomain matching.
 
-`SECURE_SSL_REDIRECT` defaults to `True` when `DEBUG=False`, so production HTTP
+The HTTP test stack defaults `SECURE_SSL_REDIRECT` to `False`; enable it (and
+HSTS) once TLS is terminated in front of the service. When enabled, HTTP
 requests redirect to HTTPS before CORS/auth processing.
 
 **Impact:** local/staging frontends are blocked until `CORS_ALLOWED_ORIGINS` is
 set correctly. Any added tracing/request-id/CSRF/custom header breaks preflight
-until `CORS_ALLOW_HEADERS` is extended. An HTTP frontend in production gets a
-redirect instead of an API response.
+until `CORS_ALLOW_HEADERS` is extended. If HTTPS redirect is enabled while a
+frontend still calls HTTP, that frontend gets a redirect instead of an API
+response.
 
 **Suggested resolution:** document per-environment origin/header values, add
 preflight tests using the actual frontend headers, and ensure the frontend uses

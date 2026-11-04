@@ -32,38 +32,46 @@ def env_list(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-DEBUG = env_bool("DJANGO_DEBUG", True)
+# ---------------------------------------------------------------------------
+# Test deployment defaults
+# ---------------------------------------------------------------------------
+# These values make the repository runnable as a production-like test stack
+# without an .env file. They are intentionally NOT production secrets. Override
+# them with environment variables for any shared or public deployment. See
+# .env.production.example for the full override list.
+DEBUG = env_bool("DJANGO_DEBUG", False)
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "").strip()
-if not SECRET_KEY:
-    if DEBUG:
-        SECRET_KEY = "django-insecure-dev-only-change-me"
-    else:
-        raise ImproperlyConfigured(
-            "DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is false."
-        )
+_TEST_DEPLOYMENT_SECRET_KEY = (
+    "G2JbZTRyHp8woT3u55MvzXeobq-4iX69FWtGEvUjYkuSZ0PRnaI0QLOkmf2pf6l9"
+)
+_TEST_DEPLOYMENT_AUTH_JWT_SECRET = (
+    "NxIVFqDbxSw40CVuy2Q7A1coh2AM6VN1TeKov-ViCMGRknFNCllYsDaoeER1CTTv"
+)
+
+_DJANGO_SECRET_FROM_ENV = os.getenv("DJANGO_SECRET_KEY", "").strip()
+_AUTH_JWT_SECRET_FROM_ENV = os.getenv("AUTH_JWT_SECRET", "").strip()
+
+if bool(_DJANGO_SECRET_FROM_ENV) != bool(_AUTH_JWT_SECRET_FROM_ENV):
+    raise ImproperlyConfigured(
+        "Set both DJANGO_SECRET_KEY and AUTH_JWT_SECRET, or neither to use the "
+        "test deployment defaults."
+    )
+
+SECRET_KEY = _DJANGO_SECRET_FROM_ENV or _TEST_DEPLOYMENT_SECRET_KEY
+AUTH_JWT_SECRET = _AUTH_JWT_SECRET_FROM_ENV or _TEST_DEPLOYMENT_AUTH_JWT_SECRET
 
 if not DEBUG and len(SECRET_KEY) < 32:
     raise ImproperlyConfigured(
         "DJANGO_SECRET_KEY must be at least 32 characters when DJANGO_DEBUG is false."
     )
 
-# Separate key for signing JWTs.
-AUTH_JWT_SECRET = os.getenv("AUTH_JWT_SECRET", "").strip()
-if not AUTH_JWT_SECRET:
-    if DEBUG:
-        AUTH_JWT_SECRET = (
-            "dev-only-jwt-secret-change-me-0123456789-abcdefghijklmnopqrstuvwxyz"
-        )
-    else:
-        raise ImproperlyConfigured(
-            "AUTH_JWT_SECRET must be set when DJANGO_DEBUG is false."
-        )
-
 if len(AUTH_JWT_SECRET) < 32:
     raise ImproperlyConfigured(
         "AUTH_JWT_SECRET must be at least 32 characters for HS256."
     )
+
+if SECRET_KEY == AUTH_JWT_SECRET:
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY and AUTH_JWT_SECRET must differ.")
 
 ALLOWED_HOSTS = env_list(
     "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver"
@@ -123,13 +131,17 @@ ASGI_APPLICATION = "config.asgi.application"
 # ---------------------------------------------------------------------------
 DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").strip().lower()
 
+# Test-only PostgreSQL credentials; docker-compose.yml uses the same defaults.
+# Override DB_PASSWORD (and the other DB_* variables) for any shared deployment.
+_TEST_DEPLOYMENT_DB_PASSWORD = "fd2Sb_yRNfAqMD3dVYK-lHSNr51Ged2b"
+
 if DB_ENGINE in {"postgres", "postgresql"}:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
             "NAME": os.getenv("DB_NAME", "persu"),
-            "USER": os.getenv("DB_USER", ""),
-            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "USER": os.getenv("DB_USER", "persu"),
+            "PASSWORD": os.getenv("DB_PASSWORD", _TEST_DEPLOYMENT_DB_PASSWORD),
             "HOST": os.getenv("DB_HOST", "127.0.0.1"),
             "PORT": os.getenv("DB_PORT", "5432"),
             "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
@@ -215,8 +227,8 @@ REST_FRAMEWORK = {
 AUTH_JWT = {
     "ALGORITHM": "HS256",
     "SECRET": AUTH_JWT_SECRET,
-    "ISSUER": os.getenv("AUTH_JWT_ISSUER", "https://api.example.com"),
-    "AUDIENCE": os.getenv("AUTH_JWT_AUDIENCE", "https://app.example.com"),
+    "ISSUER": os.getenv("AUTH_JWT_ISSUER", "http://localhost:8000"),
+    "AUDIENCE": os.getenv("AUTH_JWT_AUDIENCE", "http://localhost:3000"),
     "ACCESS_TOKEN_TTL_SECONDS": env_int("AUTH_ACCESS_TOKEN_TTL_SECONDS", 15 * 60),
 }
 AUTH_REFRESH_TOKEN_TTL_SECONDS = env_int(
@@ -233,7 +245,8 @@ if AUTH_REFRESH_TOKEN_TTL_SECONDS <= 0:
 # ---------------------------------------------------------------------------
 # Browser CORS applies only to /api/*.
 CORS_ALLOWED_ORIGINS = env_list(
-    "CORS_ALLOWED_ORIGINS", "https://app.example.com"
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000",
 )
 CORS_ALLOW_CREDENTIALS = False
 CORS_ALLOW_HEADERS = [
@@ -253,11 +266,14 @@ CORS_URLS_REGEX = r"^/api/"
 # ---------------------------------------------------------------------------
 # Security
 # ---------------------------------------------------------------------------
-SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
+# The test deployment runs over plain HTTP on localhost. Enable the HTTPS
+# settings below (or set the matching environment variables) once TLS is
+# terminated by a trusted proxy or load balancer.
+SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", False)
 # Allow internal load-balancer health checks without an HTTPS redirect.
 SECURE_REDIRECT_EXEMPT = [r"^healthz$"]
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = env_bool("DJANGO_SECURE_COOKIES", SECURE_SSL_REDIRECT)
+CSRF_COOKIE_SECURE = env_bool("DJANGO_SECURE_COOKIES", SECURE_SSL_REDIRECT)
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
@@ -266,17 +282,18 @@ SECURE_REFERRER_POLICY = "same-origin"
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
 
-SECURE_HSTS_SECONDS = env_int(
-    "DJANGO_SECURE_HSTS_SECONDS", 0 if DEBUG else 365 * 24 * 60 * 60
-)
-SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
-SECURE_HSTS_PRELOAD = not DEBUG
+SECURE_HSTS_SECONDS = env_int("DJANGO_SECURE_HSTS_SECONDS", 0)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG and SECURE_HSTS_SECONDS > 0
+SECURE_HSTS_PRELOAD = not DEBUG and SECURE_HSTS_SECONDS > 0
 
 if env_bool("DJANGO_BEHIND_PROXY", False):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     USE_X_FORWARDED_HOST = True
 
-CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost:8000,http://127.0.0.1:8000",
+)
 
 # ---------------------------------------------------------------------------
 # Internationalization / static files

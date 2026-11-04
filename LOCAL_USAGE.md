@@ -24,8 +24,9 @@ If `py -3.13` is unavailable, use `py -m venv .venv`.
 
 ## 3. Set local environment variables
 
-Development works with fallback secrets, but setting explicit values is
-recommended:
+The application has production-like test defaults in `config/settings.py`.
+Enable debug mode for local development; setting explicit secrets is
+recommended when your environment is shared:
 
 ```powershell
 $env:DJANGO_DEBUG = "true"
@@ -37,7 +38,7 @@ $env:DJANGO_ALLOWED_HOSTS = "localhost,127.0.0.1,testserver"
 Optional settings:
 
 ```powershell
-$env:CORS_ALLOWED_ORIGINS = "https://app.example.com"
+$env:CORS_ALLOWED_ORIGINS = "http://localhost:3000"
 $env:DJANGO_LOG_LEVEL = "INFO"
 ```
 
@@ -260,7 +261,7 @@ under `/auth/*` intentionally do not emit CORS headers.
 
 ```powershell
 $corsHeaders = @{
-    Origin = "https://app.example.com"
+    Origin = "http://localhost:3000"
     "Access-Control-Request-Method" = "PATCH"
     "Access-Control-Request-Headers" = "authorization,content-type"
 }
@@ -279,7 +280,7 @@ $preflight.Headers["Access-Control-Allow-Headers"]
 Expected:
 
 - status `200`
-- `Access-Control-Allow-Origin: https://app.example.com`
+- `Access-Control-Allow-Origin: http://localhost:3000`
 - `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` in the allowed methods
 - `Authorization` and `Content-Type` in the allowed headers
 - no `Access-Control-Allow-Credentials` header
@@ -329,10 +330,12 @@ do not affect your local development server:
 
 ```powershell
 $env:DJANGO_DEBUG = "false"
-$env:DJANGO_SECRET_KEY = "replace-with-a-long-random-production-secret"
-$env:AUTH_JWT_SECRET = "replace-with-a-different-long-random-production-secret"
+$env:DJANGO_SECRET_KEY = "check-only-django-secret-key-0123456789-abcdefghijklmnopqrstuvwxyz"
+$env:AUTH_JWT_SECRET = "check-only-jwt-secret-key-0123456789-abcdefghijklmnopqrstuvwxyz-different"
 $env:DJANGO_ALLOWED_HOSTS = "api.example.com"
 $env:DJANGO_SECURE_SSL_REDIRECT = "true"
+$env:DJANGO_SECURE_HSTS_SECONDS = "31536000"
+$env:DJANGO_SECURE_COOKIES = "true"
 
 .\.venv\Scripts\python manage.py check --deploy
 ```
@@ -374,7 +377,7 @@ A refresh token cannot be used as a Bearer access token.
 
 ### CORS errors in a browser
 
-- The request must come from `https://app.example.com`, or whatever is set in
+- The request must come from `http://localhost:3000`, or whatever is set in
   `CORS_ALLOWED_ORIGINS`.
 - Auth routes under `/auth/*` are intentionally not CORS-enabled.
 - Resource routes must send `Authorization` and `Content-Type`.
@@ -386,9 +389,9 @@ Set `DJANGO_ALLOWED_HOSTS` to include the host you are using, such as
 
 ### `ImproperlyConfigured`
 
-Production requires `DJANGO_SECRET_KEY` and `AUTH_JWT_SECRET`, each at least 32
-characters. Local development can use the built-in fallbacks while
-`DJANGO_DEBUG=true`.
+The built-in `DJANGO_SECRET_KEY` and `AUTH_JWT_SECRET` are test-only
+placeholders. For a shared deployment, override both with values of at least 32
+characters.
 
 ### `curl` behaves differently in PowerShell
 

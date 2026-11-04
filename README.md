@@ -62,12 +62,17 @@ pip install -r requirements-prod.txt
 
 ### 3. Configure environment variables
 
-Configuration comes from process environment variables. `.env.example` lists
-the supported variables. The project does not load `.env` automatically, so set
-the variables in your shell or process manager.
+The application ships with production-like test defaults in
+`config/settings.py`, so it can start without any environment variables. The
+signing keys and database password in that file are test-only placeholders, not
+production secrets. Override them with environment variables for any shared
+deployment.
 
-For local development, the application can start with its development
-fallbacks. Setting explicit secrets is recommended:
+Configuration is read from process environment variables. The project does not
+load `.env` automatically. `.env.example` lists optional local overrides.
+
+For local development, enable debug mode. Setting explicit secrets is
+recommended when your environment is shared:
 
 ```powershell
 $env:DJANGO_DEBUG = "true"
@@ -101,6 +106,9 @@ export DB_PORT=5432
 
 python manage.py migrate
 ```
+
+If `DB_PASSWORD` is omitted, the test-only password from `config/settings.py`
+is used. Always set a real password for a shared database.
 
 ### 5. Run the development server
 
@@ -138,48 +146,51 @@ environment; use HTTPS and a managed database for production.
 
 ### Docker Compose
 
-1. Copy the production environment template and replace every placeholder:
+The stack starts with the built-in test defaults:
 
-   ```bash
-   cp .env.production.example .env.production
-   ```
+```bash
+docker compose up --build
+```
 
-2. Generate independent secrets for `DJANGO_SECRET_KEY` and `AUTH_JWT_SECRET`:
+The API listens on `http://localhost:8000`. Check the service and create an
+admin account:
 
-   ```bash
-   python -c "import secrets; print(secrets.token_urlsafe(64))"
-   ```
+```bash
+curl http://localhost:8000/healthz
+docker compose exec web python manage.py createsuperuser
+```
 
-3. Set `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and
-   `CSRF_TRUSTED_ORIGINS` to the test frontend/API origins.
+For a shared test deployment, override the defaults with an environment file.
+Copy the template, replace every placeholder, and generate independent secrets:
 
-4. Build and start PostgreSQL, Redis, and the API:
+```bash
+cp .env.production.example .env.production
+python -c "import secrets; print(secrets.token_urlsafe(64))"
+```
 
-   ```bash
-   docker compose --env-file .env.production up --build
-   ```
+Set `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and
+`CSRF_TRUSTED_ORIGINS` to the test frontend/API origins, then start the stack:
 
-   The API listens on `http://localhost:8000` by default. Change `WEB_PORT` in
-   `.env.production` if that port is already in use.
+```bash
+docker compose --env-file .env.production up --build
+```
 
-5. Check the service and create an admin account:
+When an environment file is used, pass it to the other Compose commands too:
 
-   ```bash
-   curl http://localhost:8000/healthz
-   docker compose --env-file .env.production exec web python manage.py createsuperuser
-   ```
+```bash
+docker compose --env-file .env.production exec web python manage.py createsuperuser
+docker compose --env-file .env.production down
+```
 
-6. Stop the services:
-
-   ```bash
-   docker compose --env-file .env.production down
-   ```
+The API listens on `http://localhost:8000` by default. Change `WEB_PORT` in
+`.env.production` if that port is already in use.
 
 Use `down -v` only when you intentionally want to delete the PostgreSQL volume.
 
 ### Non-container deployment
 
-Set the production environment variables, then run:
+The built-in test defaults work without an environment file. For a shared
+deployment, set the environment variables first, then run:
 
 ```bash
 pip install -r requirements-prod.txt
@@ -188,34 +199,40 @@ python manage.py collectstatic --noinput
 gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
 ```
 
-Run `python manage.py check --deploy` before exposing the service. Terminate
-TLS at a trusted reverse proxy or load balancer. Set
-`DJANGO_BEHIND_PROXY=true` when the proxy supplies `X-Forwarded-Proto`, and set
-`DJANGO_SECURE_SSL_REDIRECT=true` once HTTPS is available. The `/healthz`
-endpoint is exempt from the HTTPS redirect so internal health checks work.
+Run `python manage.py check --deploy` before exposing the service. With the
+plain-HTTP test defaults it reports the expected HTTPS warnings. Terminate TLS
+at a trusted reverse proxy or load balancer, then set
+`DJANGO_BEHIND_PROXY=true`, `DJANGO_SECURE_SSL_REDIRECT=true`, and
+`DJANGO_SECURE_HSTS_SECONDS=31536000`. The `/healthz` endpoint is exempt from
+the HTTPS redirect so internal health checks work.
 
 ### Environment variables
 
+The values below are the defaults in `config/settings.py`. The committed
+signing keys and database password are test-only placeholders; override them
+for any shared deployment.
+
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `DJANGO_DEBUG` | `true` | Set to `false` for any shared or production-like deployment. |
-| `DJANGO_SECRET_KEY` | Development fallback | Required when `DJANGO_DEBUG=false`; use at least 32 random characters. |
+| `DJANGO_DEBUG` | `false` | Production-like default; set `true` for local development. |
+| `DJANGO_SECRET_KEY` | Test-only placeholder | Override for shared deployments; use at least 32 random characters. |
 | `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1,testserver` | Comma-separated hostnames accepted by Django. |
-| `DJANGO_SECURE_SSL_REDIRECT` | `true` when not debugging | Redirect HTTP requests to HTTPS. |
+| `DJANGO_SECURE_SSL_REDIRECT` | `false` | Redirect HTTP requests to HTTPS; enable once TLS is available. |
 | `DJANGO_BEHIND_PROXY` | `false` | Trust `X-Forwarded-Proto` and `X-Forwarded-Host` from a proxy. |
-| `DJANGO_SECURE_HSTS_SECONDS` | `31536000` when not debugging | HSTS lifetime; use `0` for plain HTTP testing. |
-| `CSRF_TRUSTED_ORIGINS` | Empty | Comma-separated trusted origins for Django admin and form posts. |
-| `AUTH_JWT_SECRET` | Development fallback | Required when `DJANGO_DEBUG=false`; must differ from `DJANGO_SECRET_KEY`. |
-| `AUTH_JWT_ISSUER` | `https://api.example.com` | JWT issuer claim. |
-| `AUTH_JWT_AUDIENCE` | `https://app.example.com` | JWT audience claim. |
+| `DJANGO_SECURE_HSTS_SECONDS` | `0` | HSTS lifetime; set `31536000` behind HTTPS. |
+| `DJANGO_SECURE_COOKIES` | Follows SSL redirect | Mark session and CSRF cookies as Secure. |
+| `CSRF_TRUSTED_ORIGINS` | `http://localhost:8000,http://127.0.0.1:8000` | Comma-separated trusted origins for Django admin and form posts. |
+| `AUTH_JWT_SECRET` | Test-only placeholder | Override for shared deployments; must differ from `DJANGO_SECRET_KEY`. |
+| `AUTH_JWT_ISSUER` | `http://localhost:8000` | JWT issuer claim. |
+| `AUTH_JWT_AUDIENCE` | `http://localhost:3000` | JWT audience claim. |
 | `AUTH_ACCESS_TOKEN_TTL_SECONDS` | `900` | Access-token lifetime in seconds. |
 | `AUTH_REFRESH_TOKEN_TTL_SECONDS` | `2592000` | Refresh-token lifetime in seconds (30 days). |
-| `CORS_ALLOWED_ORIGINS` | `https://app.example.com` | Comma-separated browser origins allowed for `/api/*`. |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated browser origins allowed for `/api/*`. |
 | `DB_ENGINE` | `sqlite` | Use `postgresql` for PostgreSQL. |
 | `SQLITE_PATH` | `db.sqlite3` | SQLite database path when using SQLite. |
 | `DB_NAME` | `persu` | PostgreSQL database name. |
-| `DB_USER` | Empty | PostgreSQL user. |
-| `DB_PASSWORD` | Empty | PostgreSQL password. |
+| `DB_USER` | `persu` | PostgreSQL user. |
+| `DB_PASSWORD` | Test-only placeholder | Override for shared or production databases. |
 | `DB_HOST` | `127.0.0.1` | PostgreSQL host. |
 | `DB_PORT` | `5432` | PostgreSQL port. |
 | `DB_CONN_MAX_AGE` | `60` | Persistent database connection lifetime in seconds. |
@@ -343,8 +360,9 @@ Authorization: Bearer <access token>
   access token for an active user.
 - Public endpoints explicitly allow anonymous access. Auth endpoints are
   intended for server-to-server calls and do not emit CORS headers.
-- CORS is enabled only for `/api/*`. The default allowed origin is
-  `https://app.example.com` and can be changed with `CORS_ALLOWED_ORIGINS`.
+- CORS is enabled only for `/api/*`. The default allowed origins are
+  `http://localhost:3000` and `http://127.0.0.1:3000`; change them with
+  `CORS_ALLOWED_ORIGINS`.
 - There are no role-specific API permissions. Any active authenticated user can
   read and update only their own profile.
 - Missing, expired, malformed, or wrong-type tokens return `401` with an

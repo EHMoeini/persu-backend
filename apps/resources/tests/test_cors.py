@@ -1,9 +1,10 @@
+from django.conf import settings
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
 from apps.accounts.tokens import issue_access_token
 
-ALLOWED_ORIGIN = "https://app.example.com"
+ALLOWED_ORIGIN = settings.CORS_ALLOWED_ORIGINS[0]
 DISALLOWED_ORIGIN = "https://evil.example.com"
 
 

@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-persu}
       POSTGRES_USER: ${DB_USER:-persu}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.production}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-fd2Sb_yRNfAqMD3dVYK-lHSNr51Ged2b}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -28,11 +28,15 @@ services:
     build: .
     restart: unless-stopped
     env_file:
-      - .env.production
+      # Optional: the built-in test defaults in config/settings.py are used
+      # when this file is absent.
+      - path: .env.production
+        required: false
     environment:
       DB_ENGINE: postgresql
       DB_HOST: db
       DB_PORT: "5432"
+      DB_PASSWORD: ${DB_PASSWORD:-fd2Sb_yRNfAqMD3dVYK-lHSNr51Ged2b}
       REDIS_URL: redis://redis:6379/1
     ports:
       - "${WEB_PORT:-8000}:8000"

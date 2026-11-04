@@ -236,9 +236,10 @@ CORS is enabled only for paths matching `CORS_URLS_REGEX = r"^/api/"`:
 
 Default policy (`config/settings.py`):
 
-- Allowed origin: `https://app.example.com` only, unless overridden by the
-  comma-separated `CORS_ALLOWED_ORIGINS` environment variable. Matching is
-  exact (scheme, host, and port); there is no wildcard or subdomain matching.
+- Allowed origins: `http://localhost:3000` and `http://127.0.0.1:3000`, unless
+  overridden by the comma-separated `CORS_ALLOWED_ORIGINS` environment variable.
+  Matching is exact (scheme, host, and port); there is no wildcard or subdomain
+  matching.
 - Allowed request headers: `authorization`, `content-type` only.
 - Allowed methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`.
 - Credentials: disabled (`CORS_ALLOW_CREDENTIALS = False`); no

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.cache import cache
 from rest_framework.test import APITestCase
 
@@ -167,7 +168,7 @@ class CheckApiTests(AuthApiTestCase):
             "/auth/check",
             {"countryCode": "US", "phone": "2024561111"},
             format="json",
-            HTTP_ORIGIN="https://app.example.com",
+            HTTP_ORIGIN=settings.CORS_ALLOWED_ORIGINS[0],
         )
 
         self.assertEqual(response.status_code, 200)

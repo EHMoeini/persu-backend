@@ -234,7 +234,7 @@ where meaningful.
 
 ### CORS, CSRF, and security headers
 
-- `X-CORS-01` Allowed origin `https://app.example.com` on `/api/me` GET/PATCH
+- `X-CORS-01` Allowed origin `http://localhost:3000` on `/api/me` GET/PATCH
   and on `401`/`400`/`404` responses → exact `Access-Control-Allow-Origin`,
   `Vary: Origin`, no `Access-Control-Allow-Credentials`.
 - `X-CORS-02` Disallowed origin → no `Access-Control-Allow-Origin`; server still
@@ -244,9 +244,9 @@ where meaningful.
   allowed methods/headers, `Access-Control-Max-Age: 86400`.
 - `X-CSRF-01` No CSRF token required for `/api/*` or `/auth/*`; requests with or
   without cookies behave the same because only Bearer authentication is active.
-- `X-SEC-01` In production-style settings, HTTP is redirected to HTTPS
-  (`SECURE_SSL_REDIRECT`); test settings disable this so assertions are not
-  masked by redirects.
+- `X-SEC-01` With `DJANGO_SECURE_SSL_REDIRECT=true`, HTTP is redirected to
+  HTTPS; test settings keep it disabled so assertions are not masked by
+  redirects.
 
 ### Throttling
 
