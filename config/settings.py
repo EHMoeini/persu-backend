@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -30,6 +31,10 @@ def env_int(name: str, default: int) -> int:
 def env_list(name: str, default: str = "") -> list[str]:
     value = os.getenv(name, default)
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+# Render sets this automatically for every web service.
+RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
 
 
 # ---------------------------------------------------------------------------
@@ -73,9 +78,11 @@ if len(AUTH_JWT_SECRET) < 32:
 if SECRET_KEY == AUTH_JWT_SECRET:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY and AUTH_JWT_SECRET must differ.")
 
-ALLOWED_HOSTS = env_list(
-    "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver"
-)
+_default_allowed_hosts = "localhost,127.0.0.1,testserver"
+if RENDER_EXTERNAL_HOSTNAME:
+    _default_allowed_hosts = f"{_default_allowed_hosts},{RENDER_EXTERNAL_HOSTNAME}"
+
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", _default_allowed_hosts)
 
 # ---------------------------------------------------------------------------
 # Applications
@@ -130,12 +137,37 @@ ASGI_APPLICATION = "config.asgi.application"
 # Database
 # ---------------------------------------------------------------------------
 DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").strip().lower()
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 # Test-only PostgreSQL credentials; docker-compose.yml uses the same defaults.
 # Override DB_PASSWORD (and the other DB_* variables) for any shared deployment.
 _TEST_DEPLOYMENT_DB_PASSWORD = "fd2Sb_yRNfAqMD3dVYK-lHSNr51Ged2b"
 
-if DB_ENGINE in {"postgres", "postgresql"}:
+if DATABASE_URL:
+    # Render (and most hosts) provide a single PostgreSQL connection string.
+    _db_url = urlparse(DATABASE_URL)
+    if _db_url.scheme not in {"postgres", "postgresql"}:
+        raise ImproperlyConfigured(
+            "DATABASE_URL must be a PostgreSQL connection string."
+        )
+
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": unquote(_db_url.path.lstrip("/")),
+            "USER": unquote(_db_url.username or ""),
+            "PASSWORD": unquote(_db_url.password or ""),
+            "HOST": _db_url.hostname or "",
+            "PORT": str(_db_url.port or "5432"),
+            "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
+            "CONN_HEALTH_CHECKS": True,
+            "OPTIONS": {
+                key: values[-1]
+                for key, values in parse_qs(_db_url.query).items()
+            },
+        }
+    }
+elif DB_ENGINE in {"postgres", "postgresql"}:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -286,14 +318,17 @@ SECURE_HSTS_SECONDS = env_int("DJANGO_SECURE_HSTS_SECONDS", 0)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG and SECURE_HSTS_SECONDS > 0
 SECURE_HSTS_PRELOAD = not DEBUG and SECURE_HSTS_SECONDS > 0
 
-if env_bool("DJANGO_BEHIND_PROXY", False):
+if env_bool("DJANGO_BEHIND_PROXY", bool(RENDER_EXTERNAL_HOSTNAME)):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     USE_X_FORWARDED_HOST = True
 
-CSRF_TRUSTED_ORIGINS = env_list(
-    "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:8000,http://127.0.0.1:8000",
-)
+_default_csrf_origins = "http://localhost:8000,http://127.0.0.1:8000"
+if RENDER_EXTERNAL_HOSTNAME:
+    _default_csrf_origins = (
+        f"{_default_csrf_origins},https://{RENDER_EXTERNAL_HOSTNAME}"
+    )
+
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", _default_csrf_origins)
 
 # ---------------------------------------------------------------------------
 # Internationalization / static files
