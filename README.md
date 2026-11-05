@@ -28,7 +28,7 @@ apps/resources/         Authenticated profile API
 apps/common/            Health endpoint and shared error handling
 Dockerfile              Production image using Gunicorn and WhiteNoise
 docker-compose.yml      PostgreSQL, Redis, and web services for test deployment
-requirements-prod.txt   Production runtime dependencies
+requirements-prod.txt   Production dependency alias (includes Gunicorn, PostgreSQL, Redis)
 ```
 
 ## Installation and Setup
@@ -47,14 +47,15 @@ source .venv/bin/activate
 
 ### 2. Install dependencies
 
-For local development:
+`requirements.txt` contains the full runtime, including Gunicorn, PostgreSQL,
+and Redis support:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-For a production-like deployment, use `requirements-prod.txt` instead. It
-includes Gunicorn, PostgreSQL support, and Redis support.
+`requirements-prod.txt` is a production alias for the same set, kept for the
+Dockerfile, `build.sh`, and existing deployment commands:
 
 ```bash
 pip install -r requirements-prod.txt

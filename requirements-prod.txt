@@ -1,6 +1,3 @@
+# Production installs use the full runtime dependency set from requirements.txt
+# (Gunicorn, PostgreSQL, and Redis included), so Render's default build works.
 -r requirements.txt
-
-# Production/test deployment dependencies.
-gunicorn>=23,<24
-psycopg[binary]>=3.2,<4
-redis>=5,<7

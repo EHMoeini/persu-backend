@@ -64,6 +64,10 @@ PostgreSQL requires `psycopg`, which is already included in
 - `build.sh` installs production dependencies and runs `collectstatic`.
 - `start.sh` runs migrations, then starts Gunicorn on `$PORT`.
 
+`requirements-prod.txt` is an alias for `requirements.txt`, which includes
+Gunicorn, PostgreSQL, and Redis. A default Render build that only runs
+`pip install -r requirements.txt` therefore installs everything the app needs.
+
 To run the same setup locally (Linux/macOS/Git Bash):
 
 ```bash
