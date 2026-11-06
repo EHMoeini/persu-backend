@@ -11,9 +11,20 @@ from .phone import InvalidPhoneNumber, normalize_phone
 class UserSerializer(serializers.ModelSerializer):
     """Public user shape: id, phone, and optional nickname/avatar."""
 
-    phone = serializers.CharField(source="phone_e164", read_only=True)
-    nickName = serializers.CharField(source="nick_name", read_only=True)
-    avatar = serializers.URLField(read_only=True)
+    phone = serializers.CharField(
+        source="phone_e164",
+        read_only=True,
+        help_text="Phone number in E.164 format.",
+    )
+    nickName = serializers.CharField(
+        source="nick_name",
+        read_only=True,
+        help_text="Optional display name; omitted when empty.",
+    )
+    avatar = serializers.URLField(
+        read_only=True,
+        help_text="Optional avatar URL; omitted when empty.",
+    )
 
     class Meta:
         model = User
@@ -29,8 +40,16 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class PhoneSerializer(serializers.Serializer):
-    countryCode = serializers.CharField(max_length=8)
-    phone = serializers.CharField(max_length=32)
+    countryCode = serializers.CharField(
+        max_length=8,
+        help_text=(
+            "ISO country code (for example US) or dialing code (for example +1)."
+        ),
+    )
+    phone = serializers.CharField(
+        max_length=32,
+        help_text="National phone number; normalized to E.164 before use.",
+    )
 
     def validate(self, attrs: dict) -> dict:
         try:
@@ -48,6 +67,7 @@ class LoginSerializer(PhoneSerializer):
         write_only=True,
         trim_whitespace=False,
         max_length=128,
+        help_text="Account password; whitespace-only values are rejected.",
     )
 
     def validate_password(self, value: str) -> str:
@@ -65,6 +85,10 @@ class RefreshTokenSerializer(serializers.Serializer):
         write_only=True,
         trim_whitespace=False,
         max_length=512,
+        help_text=(
+            "Opaque refresh token from login, registration, or the previous "
+            "refresh response."
+        ),
     )
 
     def validate_refreshToken(self, value: str) -> str:
@@ -82,4 +106,5 @@ class OtpVerifySerializer(PhoneSerializer):
         required=False,
         allow_blank=True,
         max_length=16,
+        help_text="Optional legacy code; currently ignored by the OTP stub.",
     )
