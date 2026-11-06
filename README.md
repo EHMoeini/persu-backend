@@ -18,6 +18,7 @@ Technologies used:
 - Redis-backed throttling for multi-worker deployments
 - Gunicorn and WhiteNoise for production serving
 - django-cors-headers for the browser-facing `/api/*` routes
+- drf-spectacular for OpenAPI 3, Swagger UI, and ReDoc documentation
 
 Project layout:
 
@@ -243,10 +244,35 @@ for any shared deployment.
 | `GUNICORN_WORKERS` | `3` | Gunicorn worker count in the container. |
 | `GUNICORN_TIMEOUT` | `60` | Gunicorn request timeout in seconds. |
 
+## API Documentation
+
+Interactive documentation is generated from the live DRF API with
+drf-spectacular:
+
+| URL | Purpose |
+| --- | --- |
+| `/api/schema/` | OpenAPI 3 schema (YAML by default, JSON via content negotiation). |
+| `/api/docs/` | Swagger UI. |
+| `/api/redoc/` | ReDoc. |
+
+The documentation routes are public. Protected operations use the Bearer access
+token: open Swagger UI, click **Authorize**, and enter the `accessToken` returned
+by `/auth/login` or `/auth/register` (not the refresh token). The schema uses
+the relative server URL `/`, so it follows the host used to reach the API. When
+TLS terminates at a proxy, set `DJANGO_BEHIND_PROXY=true` so Django trusts
+`X-Forwarded-Proto`; Render sets the trusted host automatically.
+
+Validate the generated schema with:
+
+```bash
+python manage.py spectacular --file schema.yml --validate
+```
+
 ## API Endpoints
 
-Paths are exact and have no trailing slash. `/admin/` is the Django admin HTML
-interface and is not part of the JSON API.
+Paths are exact and have no trailing slash. The documentation routes above are
+the exception. `/admin/` is the Django admin HTML interface and is not part of
+the JSON API.
 
 | Method | Endpoint | Description | Authentication |
 | --- | --- | --- | --- |

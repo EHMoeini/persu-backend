@@ -96,6 +96,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
+    "drf_spectacular",
     "apps.common",
     "apps.accounts",
     "apps.resources",
@@ -242,6 +243,7 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "apps.common.exceptions.api_exception_handler",
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
     "DEFAULT_THROTTLE_RATES": {
@@ -253,6 +255,62 @@ REST_FRAMEWORK = {
         "auth_otp_send": "5/min",
         "auth_otp_verify": "10/min",
     },
+}
+
+# ---------------------------------------------------------------------------
+# API documentation (OpenAPI 3, Swagger UI, ReDoc)
+# ---------------------------------------------------------------------------
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Persu API",
+    "DESCRIPTION": (
+        "Phone-based authentication and authenticated profile API.\n\n"
+        "**Authentication:** protected endpoints accept "
+        "`Authorization: Bearer <accessToken>`. Obtain an access token from "
+        "`POST /auth/login` or `POST /auth/register`, then use the Swagger UI "
+        "**Authorize** button. Refresh tokens are opaque credentials and are only "
+        "accepted by `POST /auth/refresh` and `POST /auth/logout`.\n\n"
+        "**Errors:** failed requests use a consistent envelope: "
+        '`{"error": {"code": "...", "message": "..."}}`. Validation failures '
+        "return `400` with code `validation_error`; malformed JSON also returns "
+        "`400` with code `invalid_json`. Unknown routes return `404` with code "
+        "`not_found`, and unsupported methods return `405` with code "
+        "`method_not_allowed`.\n\n"
+        "API routes do not use trailing slashes; the documentation routes do."
+    ),
+    "VERSION": "1.0.0",
+    "SERVERS": [{"url": "/", "description": "Current deployment origin"}],
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SERVE_AUTHENTICATION": [],
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": False,
+        "filter": True,
+    },
+    # Pin major versions so production docs do not depend on a moving CDN tag.
+    "SWAGGER_UI_DIST": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5",
+    "SWAGGER_UI_FAVICON_HREF": (
+        "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/favicon-32x32.png"
+    ),
+    "REDOC_DIST": "https://cdn.jsdelivr.net/npm/redoc@2",
+    "TAGS": [
+        {
+            "name": "Health",
+            "description": "Deployment liveness checks.",
+        },
+        {
+            "name": "Authentication",
+            "description": (
+                "Phone/password authentication, token rotation, logout, and OTP "
+                "stubs. These routes are public and intended for server-to-server "
+                "calls."
+            ),
+        },
+        {
+            "name": "Profile",
+            "description": "Authenticated user profile access and updates.",
+        },
+    ],
 }
 
 # Access JWT settings.

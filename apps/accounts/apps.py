@@ -6,3 +6,7 @@ class AccountsConfig(AppConfig):
     name = "apps.accounts"
     label = "accounts"
     verbose_name = "Accounts"
+
+    def ready(self) -> None:
+        # Register the OpenAPI authentication scheme used by schema generation.
+        from . import schema  # noqa: F401
