@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
+from corsheaders.defaults import default_headers
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -301,9 +302,9 @@ SPECTACULAR_SETTINGS = {
         {
             "name": "Authentication",
             "description": (
-                "Phone/password authentication, token rotation, logout, and OTP "
-                "stubs. These routes are public and intended for server-to-server "
-                "calls."
+                "Phone/password authentication, mocked OTP verification, token "
+                "rotation, and logout. Public routes; CORS is enabled for "
+                "`/auth/*` and `/api/*`."
             ),
         },
         {
@@ -330,18 +331,31 @@ if AUTH_JWT["ACCESS_TOKEN_TTL_SECONDS"] <= 0:
 if AUTH_REFRESH_TOKEN_TTL_SECONDS <= 0:
     raise ImproperlyConfigured("AUTH_REFRESH_TOKEN_TTL_SECONDS must be positive.")
 
+# OTP verification is deliberately mocked until an SMS provider is integrated.
+# The code is validated against this value; the issued access/refresh tokens are
+# real tokens produced by the normal token service.
+AUTH_OTP_MOCK_CODE = os.getenv("AUTH_OTP_MOCK_CODE", "123456").strip()
+if not AUTH_OTP_MOCK_CODE:
+    raise ImproperlyConfigured("AUTH_OTP_MOCK_CODE must not be empty.")
+
 # ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
-# Browser CORS applies only to /api/*.
+# Browser CORS applies to both the resource API and the auth API so the
+# frontend can call /auth/* directly.
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000",
 )
 CORS_ALLOW_CREDENTIALS = False
+# Keep django-cors-headers' safe defaults and add the headers the frontend
+# sends on every request. Header matching is case-insensitive.
 CORS_ALLOW_HEADERS = [
-    "authorization",
-    "content-type",
+    *default_headers,
+    "x-app-version",
+    "x-platform",
+    "x-client-locale",
+    "x-seconds-from-utc",
 ]
 CORS_ALLOW_METHODS = [
     "GET",
@@ -351,7 +365,7 @@ CORS_ALLOW_METHODS = [
     "DELETE",
     "OPTIONS",
 ]
-CORS_URLS_REGEX = r"^/api/"
+CORS_URLS_REGEX = r"^/(?:api|auth)/"
 
 # ---------------------------------------------------------------------------
 # Security
