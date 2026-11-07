@@ -256,19 +256,19 @@ Expected envelope:
 
 ## 8. Check CORS locally
 
-Resource routes under `/api/*` allow the configured browser origin. Auth routes
-under `/auth/*` intentionally do not emit CORS headers.
+Both resource routes under `/api/*` and auth routes under `/auth/*` allow the
+configured browser origin.
 
 ```powershell
 $corsHeaders = @{
     Origin = "http://localhost:3000"
-    "Access-Control-Request-Method" = "PATCH"
-    "Access-Control-Request-Headers" = "authorization,content-type"
+    "Access-Control-Request-Method" = "POST"
+    "Access-Control-Request-Headers" = "authorization,content-type,x-app-version,x-platform,x-client-locale,x-seconds-from-utc"
 }
 
 $preflight = Invoke-WebRequest `
     -Method Options `
-    -Uri "$base/api/me" `
+    -Uri "$base/auth/check" `
     -Headers $corsHeaders
 
 $preflight.StatusCode
@@ -282,7 +282,8 @@ Expected:
 - status `200`
 - `Access-Control-Allow-Origin: http://localhost:3000`
 - `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` in the allowed methods
-- `Authorization` and `Content-Type` in the allowed headers
+- `Authorization`, `Content-Type`, `X-App-Version`, `x-platform`,
+  `X-Client-Locale`, and `x-seconds-from-utc` in the allowed headers
 - no `Access-Control-Allow-Credentials` header
 
 To test a disallowed origin, use `Origin: https://evil.example.com`; the response
@@ -379,8 +380,25 @@ A refresh token cannot be used as a Bearer access token.
 
 - The request must come from `http://localhost:3000`, or whatever is set in
   `CORS_ALLOWED_ORIGINS`.
-- Auth routes under `/auth/*` are intentionally not CORS-enabled.
-- Resource routes must send `Authorization` and `Content-Type`.
+- Both `/api/*` and `/auth/*` are CORS-enabled.
+- Custom headers `X-App-Version`, `x-platform`, `X-Client-Locale`, and
+  `x-seconds-from-utc` are allowed in addition to `Authorization` and
+  `Content-Type`.
+
+### `500 internal_error` on auth routes
+
+`/auth/check`, `/auth/login`, `/auth/refresh`, `/auth/logout`, and
+`/auth/register` all touch the database. A fresh checkout or a new database
+without tables returns `500 internal_error` with log lines such as
+`no such table: users` or `no such table: refresh_tokens`. Apply migrations:
+
+```powershell
+.\.venv\Scripts\python manage.py migrate
+```
+
+Container deployments must run `python manage.py migrate --noinput` before
+Gunicorn. The provided `start.sh`, `docker-compose.yml`, and Dockerfile all do
+this.
 
 ### `DisallowedHost`
 
@@ -399,7 +417,9 @@ characters.
 
 ## 13. Known local limitations
 
-- OTP endpoints are stubs; no SMS is sent and any code is accepted.
+- `/auth/otp/send` is a stub and sends no SMS. `/auth/otp/verify` validates the
+  configured mock code (`AUTH_OTP_MOCK_CODE`, default `123456`) and returns real
+  tokens, but no real OTP is generated or delivered yet.
 - Access tokens are stateless. Logout and a second login revoke refresh tokens,
   but already-issued access tokens remain valid until they expire.
 - The default throttle cache is local to one process. Production should use a

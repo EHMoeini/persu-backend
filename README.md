@@ -229,7 +229,8 @@ for any shared deployment.
 | `AUTH_JWT_AUDIENCE` | `http://localhost:3000` | JWT audience claim. |
 | `AUTH_ACCESS_TOKEN_TTL_SECONDS` | `900` | Access-token lifetime in seconds. |
 | `AUTH_REFRESH_TOKEN_TTL_SECONDS` | `2592000` | Refresh-token lifetime in seconds (30 days). |
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated browser origins allowed for `/api/*`. |
+| `AUTH_OTP_MOCK_CODE` | `123456` | Mock OTP code accepted by `/auth/otp/verify`. Tokens are real; only code validation is mocked. |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated browser origins allowed for `/api/*` and `/auth/*`. |
 | `DB_ENGINE` | `sqlite` | Use `postgresql` for PostgreSQL. |
 | `SQLITE_PATH` | `db.sqlite3` | SQLite database path when using SQLite. |
 | `DB_NAME` | `persu` | PostgreSQL database name. |
@@ -284,7 +285,7 @@ the JSON API.
 | POST | `/auth/logout` | Revokes the refresh-token family; returns `204` with an empty body. | None; requires `refreshToken` in the body; idempotent; throttled at 30/min per token. |
 | GET | `/auth/session` | Returns the authenticated user. | Bearer access token; active user required. |
 | POST | `/auth/otp/send` | OTP send stub; returns `{"success": true}` without sending an SMS. | None; throttled at 5/min per normalized phone. |
-| POST | `/auth/otp/verify` | OTP verify stub; accepts any or absent code and returns `{"success": true}`. | None; throttled at 10/min per normalized phone. |
+| POST | `/auth/otp/verify` | Validates the mock OTP code and returns a real access token, refresh token, and user. Creates the user if the phone is unknown. | None; requires `code` in the body; throttled at 10/min per normalized phone. |
 | GET | `/api/me` | Returns the authenticated user's profile. | Bearer access token; active user required; CORS enabled. |
 | PATCH | `/api/me` | Updates `nickName` and/or `avatar`; returns the updated user. | Bearer access token; active user required; CORS enabled. |
 
@@ -295,10 +296,11 @@ Phone-based endpoints are `POST /auth/check`, `/auth/login`, `/auth/register`,
 
 | Field | Required | Rules |
 | --- | --- | --- |
-| `countryCode` | Yes | String, max 8. ISO country code such as `US`, or a dialing code such as `+1`. |
-| `phone` | Yes | String, max 32. Normalized to E.164 before lookup or storage. |
+| `countryCode` | Yes | String, max 8. ISO country code such as `US` or `IR`, or a dialing code such as `+1` or `+98`. |
+| `phone` | Yes | String, max 32. Normalized to E.164 before lookup or storage. For example, `IR` + `09123456789` becomes `+989123456789`. |
 | `password` | Login and register | String, max 128; whitespace-only values are rejected. |
-| `code` | OTP verify only | Optional string, max 16; currently ignored by the stub. |
+| `fullName` | Register only, optional | String, max 64. Stored as the profile nickname and returned as `nickName`. |
+| `code` | OTP verify only, required | String, max 16. Must match `AUTH_OTP_MOCK_CODE` (default `123456`). |
 
 Token endpoints (`/auth/refresh` and `/auth/logout`) require:
 
@@ -336,8 +338,10 @@ Login and registration return:
 `id`, `phone`, and, when set, `nickName` and `avatar`; empty optional fields are
 omitted.
 
-`/auth/logout` returns `204` with no body. The OTP stubs return
-`{"success": true}`. Unknown paths return `404`.
+`/auth/logout` returns `204` with no body. `/auth/otp/send` returns
+`{"success": true}`. `/auth/otp/verify` returns the same token-and-user shape as
+login and registration; only code validation is mocked. Unknown paths return
+`404`.
 
 ### Status codes
 
@@ -347,7 +351,7 @@ omitted.
 | 201 | Successful registration. |
 | 204 | Successful logout. |
 | 400 | Invalid request data (`validation_error`) or malformed JSON (`invalid_json`). |
-| 401 | Missing or invalid access token, invalid login credentials, or invalid/expired refresh token. |
+| 401 | Missing or invalid access token, invalid login credentials, invalid/expired refresh token, or invalid OTP code. |
 | 404 | Unknown route (`not_found`). |
 | 405 | HTTP method not allowed for the route. |
 | 409 | Phone number already registered (`phone_already_registered`). |
@@ -385,11 +389,12 @@ Authorization: Bearer <access token>
   remain valid until they expire, even after logout.
 - `/auth/session`, `GET /api/me`, and `PATCH /api/me` require a valid Bearer
   access token for an active user.
-- Public endpoints explicitly allow anonymous access. Auth endpoints are
-  intended for server-to-server calls and do not emit CORS headers.
-- CORS is enabled only for `/api/*`. The default allowed origins are
-  `http://localhost:3000` and `http://127.0.0.1:3000`; change them with
-  `CORS_ALLOWED_ORIGINS`.
+- Public endpoints explicitly allow anonymous access.
+- CORS is enabled for both `/api/*` and `/auth/*`. The default allowed origins
+  are `http://localhost:3000` and `http://127.0.0.1:3000`; change them with
+  `CORS_ALLOWED_ORIGINS`. Preflight allows `Authorization`, `Content-Type`, and
+  the frontend headers `X-App-Version`, `x-platform`, `X-Client-Locale`, and
+  `x-seconds-from-utc`.
 - There are no role-specific API permissions. Any active authenticated user can
   read and update only their own profile.
 - Missing, expired, malformed, or wrong-type tokens return `401` with an

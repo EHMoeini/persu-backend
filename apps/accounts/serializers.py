@@ -43,12 +43,16 @@ class PhoneSerializer(serializers.Serializer):
     countryCode = serializers.CharField(
         max_length=8,
         help_text=(
-            "ISO country code (for example US) or dialing code (for example +1)."
+            "ISO country code (for example US or IR) or dialing code "
+            "(for example +1 or +98)."
         ),
     )
     phone = serializers.CharField(
         max_length=32,
-        help_text="National phone number; normalized to E.164 before use.",
+        help_text=(
+            "National phone number; normalized to E.164 before use. For "
+            "example, `IR` + `09123456789` becomes `+989123456789`."
+        ),
     )
 
     def validate(self, attrs: dict) -> dict:
@@ -77,7 +81,16 @@ class LoginSerializer(PhoneSerializer):
 
 
 class RegisterSerializer(LoginSerializer):
-    pass
+    fullName = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=64,
+        write_only=True,
+        help_text=(
+            "Optional full name. Stored as the profile nickname and returned "
+            "as `nickName`."
+        ),
+    )
 
 
 class RefreshTokenSerializer(serializers.Serializer):
@@ -103,8 +116,12 @@ class LogoutSerializer(RefreshTokenSerializer):
 
 class OtpVerifySerializer(PhoneSerializer):
     code = serializers.CharField(
-        required=False,
-        allow_blank=True,
+        required=True,
+        allow_blank=False,
         max_length=16,
-        help_text="Optional legacy code; currently ignored by the OTP stub.",
+        help_text=(
+            "Verification code. The code is validated against the configured "
+            "mock code (`AUTH_OTP_MOCK_CODE`, default `123456`); the returned "
+            "tokens are real."
+        ),
     )

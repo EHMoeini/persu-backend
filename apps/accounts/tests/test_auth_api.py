@@ -163,16 +163,32 @@ class CheckApiTests(AuthApiTestCase):
 
         self.assert_error(response, 429, "rate_limited")
 
-    def test_auth_routes_do_not_emit_cors_headers(self):
+    def test_auth_routes_emit_cors_headers(self):
+        origin = settings.CORS_ALLOWED_ORIGINS[0]
         response = self.client.post(
             "/auth/check",
             {"countryCode": "US", "phone": "2024561111"},
             format="json",
-            HTTP_ORIGIN=settings.CORS_ALLOWED_ORIGINS[0],
+            HTTP_ORIGIN=origin,
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn("Access-Control-Allow-Origin", response)
+        self.assertEqual(response["Access-Control-Allow-Origin"], origin)
+
+    def test_iran_national_number_is_normalized(self):
+        User.objects.create_user(
+            phone_e164="+989123456789",
+            password=self.password,
+        )
+
+        response = self.client.post(
+            "/auth/check",
+            {"countryCode": "IR", "phone": "09123456789"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"exists": True})
 
 
 class LoginApiTests(AuthApiTestCase):
@@ -291,6 +307,31 @@ class RegisterApiTests(AuthApiTestCase):
             ).count(),
             1,
         )
+
+    def test_register_accepts_full_name(self):
+        response = self.client.post(
+            "/auth/register",
+            {
+                "countryCode": "IR",
+                "phone": "09123456789",
+                "password": self.password,
+                "fullName": "Ada Lovelace",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["user"]["phone"], "+989123456789")
+        self.assertEqual(response.json()["user"]["nickName"], "Ada Lovelace")
+
+        user = User.objects.get(phone_e164="+989123456789")
+        self.assertEqual(user.nick_name, "Ada Lovelace")
+
+    def test_register_without_full_name_omits_nick_name(self):
+        response = self.register()
+
+        self.assertEqual(response.status_code, 201)
+        self.assertNotIn("nickName", response.json()["user"])
 
     def test_register_duplicate_returns_409(self):
         response = self.register(country="US", phone="2024561111")
@@ -497,35 +538,74 @@ class OtpApiTests(AuthApiTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"success": True})
 
-    def test_otp_verify_succeeds_with_code(self):
-        response = self.client.post(
+    def verify(self, *, country="US", phone="2024561111", code="123456"):
+        return self.client.post(
             "/auth/otp/verify",
-            {"countryCode": "US", "phone": "2024561111", "code": "123456"},
+            {"countryCode": country, "phone": phone, "code": code},
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"success": True})
+    def test_otp_verify_returns_real_tokens_and_user(self):
+        response = self.verify()
 
-    def test_otp_verify_succeeds_without_code(self):
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(set(data), {"accessToken", "refreshToken", "user"})
+        self.assertEqual(data["user"]["id"], str(self.user.id))
+        self.assertEqual(data["user"]["phone"], self.phone)
+
+        claims = decode_access_token(data["accessToken"])
+        self.assertEqual(claims.user_id, self.user.id)
+        self.assertEqual(
+            RefreshToken.objects.filter(
+                user=self.user,
+                revoked_at__isnull=True,
+            ).count(),
+            1,
+        )
+
+        session = self.session(data["accessToken"])
+        self.assertEqual(session.status_code, 200)
+        self.assertEqual(session.json()["user"]["id"], str(self.user.id))
+
+    def test_otp_verify_creates_user_for_unknown_phone(self):
+        response = self.verify(country="IR", phone="09123456789")
+
+        self.assertEqual(response.status_code, 200)
+        user = User.objects.get(phone_e164="+989123456789")
+        self.assertEqual(response.json()["user"]["id"], str(user.id))
+        self.assertEqual(response.json()["user"]["phone"], "+989123456789")
+        self.assertFalse(user.has_usable_password())
+        self.assertTrue(
+            RefreshToken.objects.filter(
+                user=user,
+                revoked_at__isnull=True,
+            ).exists()
+        )
+
+    def test_otp_verify_rejects_wrong_code(self):
+        response = self.verify(code="000000")
+
+        self.assert_error(response, 401, "invalid_otp")
+        self.assertEqual(User.objects.count(), 1)
+        self.assertFalse(RefreshToken.objects.filter(user=self.user).exists())
+
+    def test_otp_verify_requires_code(self):
         response = self.client.post(
             "/auth/otp/verify",
             {"countryCode": "US", "phone": "2024561111"},
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"success": True})
+        self.assert_error(response, 400, "validation_error")
 
-    def test_otp_verify_ignores_code(self):
-        response = self.client.post(
-            "/auth/otp/verify",
-            {"countryCode": "US", "phone": "2024561111", "code": "nonsense"},
-            format="json",
-        )
+    def test_otp_verify_is_rate_limited(self):
+        for _ in range(10):
+            response = self.verify(code="000000")
+            self.assertEqual(response.status_code, 401)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"success": True})
+        response = self.verify(code="000000")
+        self.assert_error(response, 429, "rate_limited")
 
     def test_otp_invalid_phone_returns_validation_error(self):
         response = self.client.post(

@@ -17,12 +17,22 @@ class ResourceCorsTests(APITestCase):
         self.token = issue_access_token(self.user)
         self.auth_header = f"Bearer {self.token}"
 
+    custom_headers = (
+        "x-app-version",
+        "x-platform",
+        "x-client-locale",
+        "x-seconds-from-utc",
+    )
+
     def preflight(self, path: str = "/api/me", method: str = "GET"):
         return self.client.options(
             path,
             HTTP_ORIGIN=ALLOWED_ORIGIN,
             HTTP_ACCESS_CONTROL_REQUEST_METHOD=method,
-            HTTP_ACCESS_CONTROL_REQUEST_HEADERS="authorization,content-type",
+            HTTP_ACCESS_CONTROL_REQUEST_HEADERS=(
+                "authorization,content-type,"
+                + ",".join(self.custom_headers)
+            ),
         )
 
     def test_preflight_allows_configured_origin_headers_and_methods(self):
@@ -37,6 +47,8 @@ class ResourceCorsTests(APITestCase):
         allowed_headers = response["Access-Control-Allow-Headers"].lower()
         self.assertIn("authorization", allowed_headers)
         self.assertIn("content-type", allowed_headers)
+        for header in self.custom_headers:
+            self.assertIn(header, allowed_headers)
 
         allowed_methods = response["Access-Control-Allow-Methods"].upper()
         for method in ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"):
@@ -137,9 +149,17 @@ class ResourceCorsTests(APITestCase):
             ALLOWED_ORIGIN,
         )
 
-    def test_auth_routes_are_not_cors_enabled(self):
+    def test_auth_routes_are_cors_enabled(self):
         preflight = self.preflight(path="/auth/check", method="POST")
-        self.assertNotIn("Access-Control-Allow-Origin", preflight)
+        self.assertEqual(preflight.status_code, 200)
+        self.assertEqual(
+            preflight["Access-Control-Allow-Origin"],
+            ALLOWED_ORIGIN,
+        )
+
+        allowed_headers = preflight["Access-Control-Allow-Headers"].lower()
+        for header in self.custom_headers:
+            self.assertIn(header, allowed_headers)
 
         response = self.client.post(
             "/auth/check",
@@ -148,4 +168,20 @@ class ResourceCorsTests(APITestCase):
             HTTP_ORIGIN=ALLOWED_ORIGIN,
         )
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn("Access-Control-Allow-Origin", response)
+        self.assertEqual(
+            response["Access-Control-Allow-Origin"],
+            ALLOWED_ORIGIN,
+        )
+
+    def test_login_preflight_allows_custom_headers(self):
+        preflight = self.preflight(path="/auth/login", method="POST")
+
+        self.assertEqual(preflight.status_code, 200)
+        self.assertEqual(
+            preflight["Access-Control-Allow-Origin"],
+            ALLOWED_ORIGIN,
+        )
+
+        allowed_headers = preflight["Access-Control-Allow-Headers"].lower()
+        for header in self.custom_headers:
+            self.assertIn(header, allowed_headers)

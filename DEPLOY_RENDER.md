@@ -22,6 +22,14 @@ Add these environment variables (Settings → Environment):
 | `DJANGO_SECRET_KEY` | generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
 | `AUTH_JWT_SECRET` | generate a **different** value the same way |
 | `DJANGO_BEHIND_PROXY` | `true` |
+| `CORS_ALLOWED_ORIGINS` | comma-separated frontend origins, for example `https://your-frontend.example.com` |
+| `AUTH_OTP_MOCK_CODE` | `123456` (optional; the mock code accepted by `/auth/otp/verify`) |
+
+`CORS_ALLOWED_ORIGINS` enables browser calls to both `/api/*` and `/auth/*`.
+The defaults allow only `http://localhost:3000` and `http://127.0.0.1:3000`, so
+set your deployed frontend origin here or the browser will block the responses.
+The allowed request headers include `Authorization`, `Content-Type`,
+`X-App-Version`, `x-platform`, `X-Client-Locale`, and `x-seconds-from-utc`.
 
 `DJANGO_SECRET_KEY` and `AUTH_JWT_SECRET` must both be set, and must differ.
 If you omit both, the non-production defaults in `config/settings.py` are used;

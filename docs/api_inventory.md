@@ -17,9 +17,10 @@ Scanned files:
 - `README.md`, `LOCAL_USAGE.md`, `.env.example`
 
 The project has **11 method-specific API endpoints on 10 paths**. There are no
-list endpoints, no API version prefix, and no OpenAPI schema. `/admin/` is a
-Django admin HTML UI and is not part of the JSON API; it is excluded from the
-endpoint table below.
+list endpoints and no API version prefix. An OpenAPI 3 schema is available at
+`/api/schema/`, with Swagger UI at `/api/docs/` and ReDoc at `/api/redoc/`.
+`/admin/` is a Django admin HTML UI and is not part of the JSON API; it is
+excluded from the endpoint table below.
 
 All API paths are **exact and have no trailing slash**. For example, `/api/me`
 is valid; `/api/me/` is a 404. See “Trailing slashes and URL matching” below.
@@ -31,12 +32,12 @@ is valid; `/api/me/` is a 404. See “Trailing slashes and URL matching” below
 | GET | `/healthz` | `apps.common.views.HealthView` | No | `AllowAny`; no authentication classes; no throttling | None | `200` `{"status": "ok"}` (`status`: string) | None | None |
 | POST | `/auth/check` | `apps.accounts.views.CheckView` | No | `AllowAny`; `AuthScopedRateThrottle`, scope `auth_check` (10/min per normalized phone; invalid phone falls back to caller IP) | `countryCode` string, required, max 8; `phone` string, required, max 32; normalized to E.164 before lookup | `200` `{"exists": boolean}`; errors per envelope | None | Read-only; no DB writes |
 | POST | `/auth/login` | `apps.accounts.views.LoginView` | No | `AllowAny`; `AuthScopedRateThrottle`, scope `auth_login` (5/min per normalized phone) | `countryCode` string, required, max 8; `phone` string, required, max 32; `password` string, required, max 128, whitespace-only rejected, not trimmed | `200` `{"accessToken": string, "refreshToken": string, "user": User}`; errors per envelope | None | Revokes every active refresh token for the user; inserts one new `refresh_tokens` row (new family); does **not** update `last_login`; wrapped in a DB transaction |
-| POST | `/auth/register` | `apps.accounts.views.RegisterView` | No | `AllowAny`; `AuthScopedRateThrottle`, scope `auth_register` (5/min per normalized phone) | Same as login: `countryCode`, `phone`, `password` | `201` `{"accessToken": string, "refreshToken": string, "user": User}`; `409` `phone_already_registered` if normalized phone exists | None | Inserts a `users` row (Argon2id password hash) and one `refresh_tokens` row; duplicate phone is caught from the unique constraint; no email/SMS |
+| POST | `/auth/register` | `apps.accounts.views.RegisterView` | No | `AllowAny`; `AuthScopedRateThrottle`, scope `auth_register` (5/min per normalized phone) | Same as login plus optional `fullName` string, max 64, stored as `nick_name` | `201` `{"accessToken": string, "refreshToken": string, "user": User}`; `409` `phone_already_registered` if normalized phone exists | None | Inserts a `users` row (Argon2id password hash, optional `nick_name`) and one `refresh_tokens` row; duplicate phone is caught from the unique constraint; no email/SMS |
 | POST | `/auth/refresh` | `apps.accounts.views.RefreshView` | No | `AllowAny`; `AuthScopedRateThrottle`, scope `auth_refresh` (20/min per presented refresh token) | `refreshToken` string, required, max 512, whitespace-only rejected | `200` `{"accessToken": string, "refreshToken": string}` (no `user`); errors per envelope | None | Rotates the refresh token in the same family: inserts a new `refresh_tokens` row, marks the old row `revoked_at` and `replaced_by`; reuse of a revoked token revokes the whole family; transaction |
 | POST | `/auth/logout` | `apps.accounts.views.LogoutView` | No | `AllowAny`; `AuthScopedRateThrottle`, scope `auth_logout` (30/min per refresh token) | `refreshToken` string, required, max 512, whitespace-only rejected | `204` with empty body; errors per envelope | None | Revokes the token family if the presented refresh token is known; unknown non-empty token still returns `204`; idempotent; no DB write for an unknown token |
 | GET | `/auth/session` | `apps.accounts.views.SessionView` | Yes — `Authorization: Bearer <access JWT>` | `IsAuthenticatedUser` (authenticated and `is_active`); no throttling; authentication class `BearerAuthentication` | None | `200` `{"user": User}`; `401` `unauthorized` without a token or with an invalid token | None | Read-only |
 | POST | `/auth/otp/send` | `apps.accounts.views.OtpSendView` | No | `AllowAny`; `AuthScopedRateThrottle`, scope `auth_otp_send` (5/min per normalized phone) | `countryCode` string, required, max 8; `phone` string, required, max 32 | `200` `{"success": true}`; errors per envelope | None | Stub: no SMS, no OTP row, no token; only the throttle cache is touched |
-| POST | `/auth/otp/verify` | `apps.accounts.views.OtpVerifyView` | No | `AllowAny`; `AuthScopedRateThrottle`, scope `auth_otp_verify` (10/min per normalized phone) | `countryCode` and `phone` required as above; `code` optional string, max 16, blank allowed, **ignored** | `200` `{"success": true}`; errors per envelope | None | Stub: accepts any/absent code; no DB writes, no session/token issued |
+| POST | `/auth/otp/verify` | `apps.accounts.views.OtpVerifyView` | No | `AllowAny`; `AuthScopedRateThrottle`, scope `auth_otp_verify` (10/min per normalized phone) | `countryCode` and `phone` required as above; `code` required string, max 16, must match `AUTH_OTP_MOCK_CODE` (default `123456`) | `200` `{"accessToken": string, "refreshToken": string, "user": User}`; `401` `invalid_otp` for a wrong code; errors per envelope | None | Code validation is mocked; tokens are real. Creates the user if the phone is unknown, then revokes existing refresh tokens and inserts one new `refresh_tokens` row |
 | GET | `/api/me` | `apps.resources.views.MeView` | Yes — `Authorization: Bearer <access JWT>` | `IsAuthenticatedUser`; no throttling; CORS enabled for this path | None | `200` `{"user": User}`; `401` `unauthorized`; `406` if the client cannot accept JSON | None | Read-only |
 | PATCH | `/api/me` | `apps.resources.views.MeView` | Yes — `Authorization: Bearer <access JWT>` | `IsAuthenticatedUser`; no throttling; CORS enabled for this path | `nickName` optional string, max 64, blank allowed, trimmed; `avatar` optional URL string, max 500, blank allowed; unknown fields ignored; `{}` is a valid no-op | `200` `{"user": User}`; `400` `validation_error`; `401`; `405`; `415` | None | Updates `users.nick_name`, `users.avatar`, and `updated_at`; empty string clears an optional field; no email/task |
 
@@ -44,8 +45,8 @@ Notes:
 
 - “No” auth means the view explicitly has `authentication_classes = []` and
   `permission_classes = [AllowAny]`.
-- The auth endpoints are designed for **server-to-server** calls. They are not
-  CORS-enabled (see below).
+- The auth endpoints are public and CORS-enabled for the configured frontend
+  origins (see below).
 - `POST /api/me`, `PUT /api/me`, and `DELETE /api/me` are not supported. With a
   valid token they return `405 method_not_allowed`; without a valid token the
   permission check runs first and returns `401 unauthorized`.
@@ -117,7 +118,7 @@ Refresh (`200`):
 | `POST /auth/check` | 200 | `{"exists": true}` or `{"exists": false}` |
 | `POST /auth/logout` | 204 | Empty body (do not parse JSON) |
 | `POST /auth/otp/send` | 200 | `{"success": true}` |
-| `POST /auth/otp/verify` | 200 | `{"success": true}` |
+| `POST /auth/otp/verify` | 200 | `{"accessToken": string, "refreshToken": string, "user": User}` |
 
 ## Frontend contract
 
@@ -155,9 +156,9 @@ Authorization: Bearer <accessToken>
 - Logout requires the refresh token, revokes the refresh family, and returns
   `204`. It does not revoke already-issued access tokens.
 
-`/auth/session` and `/api/me` return the same `{"user": ...}` shape. `/api/me`
-is the browser-facing endpoint; `/auth/session` is under the non-CORS `/auth/*`
-namespace and is intended for server-to-server use.
+`/auth/session` and `/api/me` return the same `{"user": ...}` shape. Both the
+`/api/*` and `/auth/*` namespaces are CORS-enabled; `/api/me` remains the
+canonical browser profile endpoint.
 
 ### 2. Standard error format
 
@@ -183,6 +184,7 @@ map. A `204` response has no body at all.
 | 401 | `unauthorized` | `Authentication failed.` | Bearer token invalid/expired/wrong type, malformed Bearer header, unknown/disabled user |
 | 401 | `invalid_credentials` | `Invalid phone number or password.` | Login with unknown phone, wrong password, or inactive user (deliberately generic) |
 | 401 | `invalid_refresh_token` | `Invalid or expired refresh token.` | Refresh with unknown, expired, revoked, reused, or inactive-user token |
+| 401 | `invalid_otp` | `Invalid or expired verification code.` | OTP verify with a code that does not match `AUTH_OTP_MOCK_CODE` |
 | 403 | `forbidden` | `You do not have permission to perform this action.` | Reserved by the error handler; no current endpoint produces it (see `docs/api_issues.md`) |
 | 404 | `not_found` | `Resource not found.` | Unknown path, or no matching route |
 | 405 | `method_not_allowed` | `Method not allowed.` | Wrong HTTP method for an existing path; response includes `Allow` |
@@ -198,8 +200,8 @@ Additional response headers:
   `invalid_refresh_token`) do not include this header.
 - `405` includes `Allow` (for example, `Allow: GET, PATCH, HEAD, OPTIONS`).
 - `429` includes `Retry-After` (integer seconds; observed `60`).
-- `404`/`500` under `/api/` include CORS headers when the request `Origin` is
-  allowed.
+- `404`/`500` under `/api/` or `/auth/` include CORS headers when the request
+  `Origin` is allowed.
 
 Unhandled exceptions inside DRF views are converted by `api_exception_handler`
 to the `500 internal_error` envelope. Exceptions outside DRF views use
@@ -227,10 +229,12 @@ will need an explicit convention.
 
 ### 4. CORS behavior
 
-CORS is enabled only for paths matching `CORS_URLS_REGEX = r"^/api/"`:
+CORS is enabled for paths matching `CORS_URLS_REGEX = r"^/(?:api|auth)/"`:
 
 - `GET/PATCH /api/me` — CORS enabled.
-- `/auth/*` — **no CORS headers**.
+- `POST /auth/check`, `/auth/login`, `/auth/register`, `/auth/refresh`,
+  `/auth/logout`, `/auth/otp/send`, `/auth/otp/verify` — CORS enabled.
+- `GET /auth/session` — CORS enabled.
 - `/healthz` — no CORS headers.
 - `/admin/*` — no CORS headers.
 
@@ -240,7 +244,10 @@ Default policy (`config/settings.py`):
   overridden by the comma-separated `CORS_ALLOWED_ORIGINS` environment variable.
   Matching is exact (scheme, host, and port); there is no wildcard or subdomain
   matching.
-- Allowed request headers: `authorization`, `content-type` only.
+- Allowed request headers: django-cors-headers' safe defaults (including
+  `authorization` and `content-type`) plus the frontend headers `X-App-Version`,
+  `x-platform`, `X-Client-Locale`, and `x-seconds-from-utc`. Header names are
+  matched case-insensitively.
 - Allowed methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`.
 - Credentials: disabled (`CORS_ALLOW_CREDENTIALS = False`); no
   `Access-Control-Allow-Credentials` header is emitted.
@@ -257,23 +264,22 @@ Preflight behavior:
   requires authentication; without a token it returns `401`.
 - With a valid token, a non-preflight `OPTIONS /api/me` returns `200` DRF
   metadata.
-- Public auth endpoints answer `OPTIONS` with `200` DRF metadata but do not emit
-  CORS headers.
-- Actual `/api/*` responses, including `401`, `400`, and `404`, carry the CORS
-  headers when the request origin is allowed, so the browser can read the error
-  body.
+- Preflight requests to the public auth endpoints (for example
+  `OPTIONS /auth/login`) are answered by the CORS middleware with `200` and the
+  CORS headers, so a browser frontend can call the auth routes directly.
+- Actual `/api/*` and `/auth/*` responses, including `401`, `400`, and `404`,
+  carry the CORS headers when the request origin is allowed, so the browser can
+  read the error body.
 - A disallowed origin receives no `Access-Control-Allow-Origin`; the server may
   still process the request, but the browser blocks the response.
 
-Because `/auth/*` is not CORS-enabled, a browser page served from the frontend
-origin cannot call `/auth/login`, `/auth/register`, `/auth/refresh`,
-`/auth/logout`, or `/auth/session` directly. Those calls must go through a
-same-origin backend-for-frontend/proxy (the intended server-to-server model), or
-the CORS policy must be changed. `/api/me` is the browser-facing user endpoint.
+Because both namespaces are CORS-enabled, a browser frontend can call
+`/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/logout`,
+`/auth/otp/verify`, and `/auth/session` directly, provided its origin is listed
+in `CORS_ALLOWED_ORIGINS`.
 
-Custom request headers outside `authorization` and `content-type` (for example
-`X-Request-Id` or `X-CSRFToken`) will cause a preflight failure unless
-`CORS_ALLOW_HEADERS` is extended.
+Request headers outside the policy listed above (for example `X-Request-Id`)
+will cause a preflight failure unless `CORS_ALLOW_HEADERS` is extended.
 
 ### 5. CSRF behavior
 
@@ -356,13 +362,17 @@ across workers unless a shared cache is configured.
 
 - No email, SMS, push, Celery, task queue, signals, webhooks, or outbound HTTP
   calls exist in the application code.
-- `/auth/otp/send` and `/auth/otp/verify` are stubs: no message is sent and no
-  OTP is stored.
+- `/auth/otp/send` is a stub: no SMS is sent and no OTP is stored.
+  `/auth/otp/verify` validates the configured mock code and issues real tokens;
+  it does not generate or deliver a code yet.
 - Database tables involved: `users` and `refresh_tokens`, plus Django’s
   auth/session/admin tables.
 - Login: revokes all active `refresh_tokens` rows for the user and inserts one
   new row.
 - Register: inserts one `users` row and one `refresh_tokens` row.
+- OTP verify: validates `code`; creates a `users` row with an unusable password
+  only when the normalized phone is unknown, then revokes existing refresh
+  tokens and inserts one new `refresh_tokens` row.
 - Refresh: inserts a new `refresh_tokens` row, revokes the presented row, and
   links it through `replaced_by`; reuse revokes the whole family.
 - Logout: marks the refresh-token family revoked if the presented token exists.
@@ -384,20 +394,23 @@ across workers unless a shared cache is configured.
 ## Frontend integration checklist
 
 1. Configure the API base URL; never append a trailing slash to the paths above.
-2. Call `/healthz` for liveness (no auth, no CORS from a browser origin).
-3. Route `/auth/login`, `/auth/register`, `/auth/refresh`, and `/auth/logout`
-   through a same-origin server/proxy, not directly from the browser.
+2. Call `/healthz` for liveness (no auth; it is outside the CORS-enabled
+   namespaces).
+3. Set `CORS_ALLOWED_ORIGINS` to include the frontend origin, then call
+   `/auth/login`, `/auth/register`, `/auth/refresh`, and `/auth/logout` directly
+   from the browser.
 4. Store `accessToken` and `refreshToken`; send
    `Authorization: Bearer <accessToken>` to `/api/me`.
 5. On `401` from `/api/me`, rotate via `/auth/refresh` once and retry. On
    `invalid_refresh_token`, require a new login.
-6. Expect `401` bodies with codes `unauthorized`, `invalid_credentials`, or
-   `invalid_refresh_token`; treat any `401` as an auth failure but branch on the
-   code for UX.
+6. Expect `401` bodies with codes `unauthorized`, `invalid_credentials`,
+   `invalid_refresh_token`, or `invalid_otp`; treat any `401` as an auth failure
+   but branch on the code for UX.
 7. Do not expect field-level validation details; all `400` validation failures
    currently have the same generic body.
 8. Do not use cookies or CSRF tokens for API calls; do not rely on logout to
    invalidate an already-issued access token.
-9. Keep request headers to `Authorization` and `Content-Type` unless CORS
-   configuration is extended.
+9. Send `Authorization`, `Content-Type`, and the custom headers
+   `X-App-Version`, `x-platform`, `X-Client-Locale`, and `x-seconds-from-utc`
+   freely; they are all allowed by CORS.
 10. Treat `204` logout as an empty response; do not call `.json()` on it.

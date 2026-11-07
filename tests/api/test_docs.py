@@ -58,6 +58,38 @@ def test_schema_documents_every_endpoint_and_bearer_auth(client):
         assert not schema["paths"][path][method].get("security")
 
 
+def test_swagger_documents_iran_phone_normalization_examples(client):
+    response = client.get(
+        reverse("schema"),
+        HTTP_ACCEPT="application/vnd.oai.openapi+json",
+    )
+
+    assert response.status_code == 200
+    schema = response.json()
+
+    def request_examples(path: str) -> list[dict]:
+        content = schema["paths"][path]["post"]["requestBody"]["content"]
+        return [
+            example["value"]
+            for example in content["application/json"].get("examples", {}).values()
+        ]
+
+    expected_request = {"countryCode": "IR", "phone": "09123456789"}
+    assert expected_request in request_examples("/auth/check")
+
+    register_examples = request_examples("/auth/register")
+    assert any(
+        example.get("fullName") == "Ada Lovelace"
+        and example.get("countryCode") == "IR"
+        and example.get("phone") == "09123456789"
+        for example in register_examples
+    )
+
+    check_description = schema["paths"]["/auth/check"]["post"]["description"]
+    assert "09123456789" in check_description
+    assert "+989123456789" in check_description
+
+
 def test_swagger_ui_uses_schema_endpoint(client):
     response = client.get(reverse("swagger-ui"))
 
