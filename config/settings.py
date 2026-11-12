@@ -98,6 +98,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "drf_spectacular",
+    "drf_spectacular_sidecar",
     "apps.common",
     "apps.accounts",
     "apps.resources",
@@ -288,12 +289,10 @@ SPECTACULAR_SETTINGS = {
         "displayOperationId": False,
         "filter": True,
     },
-    # Pin major versions so production docs do not depend on a moving CDN tag.
-    "SWAGGER_UI_DIST": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5",
-    "SWAGGER_UI_FAVICON_HREF": (
-        "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/favicon-32x32.png"
-    ),
-    "REDOC_DIST": "https://cdn.jsdelivr.net/npm/redoc@2",
+    # Serve Swagger UI and ReDoc assets from this deployment instead of a CDN.
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
     "TAGS": [
         {
             "name": "Health",
