@@ -256,9 +256,13 @@ drf-spectacular:
 | `/api/schema/` | OpenAPI 3 schema (YAML by default, JSON via content negotiation). |
 | `/api/docs/` | Swagger UI. |
 | `/api/redoc/` | ReDoc. |
+| `/`, `/docs/`, `/swagger/` | Redirect to Swagger UI. |
+| `/redoc/` | Redirect to ReDoc. |
 
-The documentation routes are public. Protected operations use the Bearer access
-token: open Swagger UI, click **Authorize**, and enter the `accessToken` returned
+The documentation routes are public. Swagger UI and ReDoc assets are served
+from this deployment's own static files, so the docs do not depend on an
+external CDN. Protected operations use the Bearer access token: open Swagger UI,
+click **Authorize**, and enter the `accessToken` returned
 by `/auth/login` or `/auth/register` (not the refresh token). The schema uses
 the relative server URL `/`, so it follows the host used to reach the API. When
 TLS terminates at a proxy, set `DJANGO_BEHIND_PROXY=true` so Django trusts

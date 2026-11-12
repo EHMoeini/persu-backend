@@ -106,3 +106,28 @@ def test_redoc_uses_schema_endpoint(client):
     assert response["Content-Type"].startswith("text/html")
     assert b"redoc" in response.content.lower()
     assert b"/api/schema/" in response.content
+
+
+def test_docs_shortcuts_redirect_to_swagger_ui(client):
+    for path in ("/", "/docs/", "/swagger/"):
+        response = client.get(path)
+        assert response.status_code == 302
+        assert response["Location"] == reverse("swagger-ui")
+
+
+def test_redoc_shortcut_redirects_to_redoc(client):
+    response = client.get("/redoc/")
+    assert response.status_code == 302
+    assert response["Location"] == reverse("redoc")
+
+
+def test_docs_assets_are_self_hosted(client):
+    swagger = client.get(reverse("swagger-ui"))
+    assert swagger.status_code == 200
+    assert b"cdn.jsdelivr.net" not in swagger.content
+    assert b"/static/drf_spectacular_sidecar/" in swagger.content
+
+    redoc = client.get(reverse("redoc"))
+    assert redoc.status_code == 200
+    assert b"cdn.jsdelivr.net" not in redoc.content
+    assert b"/static/drf_spectacular_sidecar/" in redoc.content
