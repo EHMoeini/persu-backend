@@ -242,7 +242,8 @@ for any shared deployment.
 | `REDIS_URL` | Empty (local memory) | Redis URL for shared throttling cache, for example `redis://redis:6379/1`. |
 | `DJANGO_LOG_LEVEL` | `INFO` | Application and Django log level. |
 | `WEB_PORT` | `8000` | Host port published by Docker Compose. |
-| `GUNICORN_WORKERS` | `3` | Gunicorn worker count in the container. |
+| `WEB_CONCURRENCY` | Empty | Optional Gunicorn worker override; takes precedence over `GUNICORN_WORKERS`. Render sets this automatically. |
+| `GUNICORN_WORKERS` | `3` | Fallback Gunicorn worker count when `WEB_CONCURRENCY` is unset. |
 | `GUNICORN_TIMEOUT` | `60` | Gunicorn request timeout in seconds. |
 
 ## API Documentation
