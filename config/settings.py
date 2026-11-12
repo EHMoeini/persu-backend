@@ -311,6 +311,10 @@ SPECTACULAR_SETTINGS = {
             "name": "Profile",
             "description": "Authenticated user profile access and updates.",
         },
+        {
+            "name": "Facilities",
+            "description": "Public facility search.",
+        },
     ],
 }
 

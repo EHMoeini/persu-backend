@@ -4,6 +4,22 @@ from rest_framework import serializers
 
 from apps.accounts.models import User
 
+from .models import Facility
+
+
+class FacilitySerializer(serializers.ModelSerializer):
+    """Public facility shape returned by search."""
+
+    class Meta:
+        model = Facility
+        fields = ("id", "name", "type", "location")
+
+
+class FacilityListResponseSerializer(serializers.Serializer):
+    """Facility search envelope."""
+
+    facilities = FacilitySerializer(many=True, read_only=True)
+
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     """Fields the authenticated user may update."""

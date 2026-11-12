@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -10,7 +11,57 @@ from apps.accounts.schema import UserResponseSerializer
 from apps.accounts.serializers import UserSerializer
 from apps.common.schema import error_response
 
-from .serializers import ProfileUpdateSerializer
+from .models import Facility
+from .search import search_facilities
+from .serializers import (
+    FacilityListResponseSerializer,
+    FacilitySerializer,
+    ProfileUpdateSerializer,
+)
+
+
+class FacilityListView(APIView):
+    """Public facility search endpoint."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        tags=["Facilities"],
+        summary="Search facilities",
+        description=(
+            "Searches facility name, type, and location in Persian or English. "
+            "Matches are partial, case-insensitive, and tolerant of Persian/"
+            "Arabic character variants (`ي`/`ی`, `ك`/`ک`), extra spaces, and "
+            "ZWNJ, and small spelling variations. Related terms are recognized, "
+            "so `شنا` finds pools and `فوتبال` finds artificial turf. Results are "
+            "ordered by relevance. "
+            "A missing or blank `q` returns every facility. No authentication "
+            "is required."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="q",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Partial, case-insensitive search text.",
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=FacilityListResponseSerializer,
+                description="Matching facilities.",
+            ),
+            500: error_response("Unhandled server error (`internal_error`)."),
+        },
+    )
+    def get(self, request) -> Response:
+        query = (request.query_params.get("q") or "").strip()
+        facilities = search_facilities(Facility.objects.all(), query)
+        return Response(
+            {"facilities": FacilitySerializer(facilities, many=True).data}
+        )
 
 
 class MeView(APIView):
