@@ -79,7 +79,9 @@ if len(AUTH_JWT_SECRET) < 32:
 if SECRET_KEY == AUTH_JWT_SECRET:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY and AUTH_JWT_SECRET must differ.")
 
-_default_allowed_hosts = "localhost,127.0.0.1,testserver"
+_default_allowed_hosts = (
+    "localhost,127.0.0.1,testserver,api.persu.fpna.ir,persu.fpna.ir,192.168.6.222"
+)
 if RENDER_EXTERNAL_HOSTNAME:
     _default_allowed_hosts = f"{_default_allowed_hosts},{RENDER_EXTERNAL_HOSTNAME}"
 
@@ -105,9 +107,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -345,11 +347,23 @@ if not AUTH_OTP_MOCK_CODE:
 # CORS
 # ---------------------------------------------------------------------------
 # Browser CORS applies to both the resource API and the auth API so the
-# frontend can call /auth/* directly.
+# frontend can call /auth/* and /api/* directly.
+_default_cors_origins = (
+    "http://localhost:3000,"
+    "http://127.0.0.1:3000,"
+    "https://persu.fpna.ir,"
+    "http://persu.fpna.ir:3000,"
+    "http://192.168.6.222:3000"
+)
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:3000,http://127.0.0.1:3000",
+    _default_cors_origins,
 )
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https?://(?:[a-zA-Z0-9-]+\.)*fpna\.ir(?::\d+)?$",
+    r"^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?$",
+]
+CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", False)
 CORS_ALLOW_CREDENTIALS = False
 # Keep django-cors-headers' safe defaults and add the headers the frontend
 # sends on every request. Header matching is case-insensitive.
@@ -359,6 +373,8 @@ CORS_ALLOW_HEADERS = [
     "x-platform",
     "x-client-locale",
     "x-seconds-from-utc",
+    "x-device-id",
+    "x-device-info",
 ]
 CORS_ALLOW_METHODS = [
     "GET",
@@ -368,7 +384,7 @@ CORS_ALLOW_METHODS = [
     "DELETE",
     "OPTIONS",
 ]
-CORS_URLS_REGEX = r"^/(?:api|auth)/"
+CORS_URLS_REGEX = r"^/(?:api|auth)"
 
 # ---------------------------------------------------------------------------
 # Security
@@ -397,7 +413,16 @@ if env_bool("DJANGO_BEHIND_PROXY", bool(RENDER_EXTERNAL_HOSTNAME)):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     USE_X_FORWARDED_HOST = True
 
-_default_csrf_origins = "http://localhost:8000,http://127.0.0.1:8000"
+_default_csrf_origins = (
+    "http://localhost:8000,"
+    "http://127.0.0.1:8000,"
+    "https://persu.fpna.ir,"
+    "https://api.persu.fpna.ir,"
+    "http://persu.fpna.ir:3000,"
+    "http://api.persu.fpna.ir:8000,"
+    "http://192.168.6.222:3000,"
+    "http://192.168.6.222:8000"
+)
 if RENDER_EXTERNAL_HOSTNAME:
     _default_csrf_origins = (
         f"{_default_csrf_origins},https://{RENDER_EXTERNAL_HOSTNAME}"
