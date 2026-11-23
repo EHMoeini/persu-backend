@@ -11,6 +11,7 @@ Use these values in the Render "New Web Service" form:
 | Language | Python 3 |
 | Branch | `main` (or whichever branch has these changes) |
 | Build Command | `bash build.sh` |
+| Pre-Deploy Command | `python manage.py migrate --noinput` |
 | Start Command | `bash start.sh` |
 | Health Check Path | `/healthz` |
 
@@ -70,7 +71,8 @@ PostgreSQL requires `psycopg`, which is already included in
 ## What the scripts do
 
 - `build.sh` installs production dependencies and runs `collectstatic`.
-- `start.sh` runs migrations, then starts Gunicorn on `$PORT`.
+- `python manage.py migrate --noinput` (Pre-Deploy Command) applies database migrations before the new version goes live.
+- `start.sh` starts Gunicorn on `$PORT` (migrations are decoupled and run beforehand).
 
 `requirements-prod.txt` is an alias for `requirements.txt`, which includes
 Gunicorn, PostgreSQL, and Redis. A default Render build that only runs
