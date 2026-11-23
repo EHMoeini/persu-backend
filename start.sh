@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Render start step: apply migrations, then run Gunicorn.
+# Start step: run Gunicorn.
+# Database migrations are executed separately via pre-deployment commands.
 set -o errexit
-
-python manage.py migrate --noinput
 
 exec gunicorn config.wsgi:application \
   --bind "0.0.0.0:${PORT:-8000}" \

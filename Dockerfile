@@ -30,7 +30,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"
 
-# Apply migrations before starting Gunicorn. The Dockerfile is also used
-# directly (outside docker-compose), so it must not assume an external entrypoint
-# already ran `migrate`.
-CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-${GUNICORN_WORKERS:-3}} --timeout ${GUNICORN_TIMEOUT:-60} --access-logfile - --error-logfile -"]
+# Default container command: start Gunicorn.
+# Database migrations are decoupled and executed as a dedicated pre-deployment step.
+CMD ["sh", "-c", "exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-${GUNICORN_WORKERS:-3}} --timeout ${GUNICORN_TIMEOUT:-60} --access-logfile - --error-logfile -"]
