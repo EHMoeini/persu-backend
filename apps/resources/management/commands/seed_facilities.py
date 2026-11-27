@@ -29,23 +29,27 @@ class Command(BaseCommand):
             "--if-empty",
             action="store_true",
             help=(
-                "Only seed when there are no facilities at all. This is used "
-                "by the deployment startup script and never adds mock rows to "
-                "a database that already has real facilities."
+                "Only seed when there are no real facilities. Existing mock "
+                "rows are updated in place, so this adds newly defined mock "
+                "listings to a database seeded by an older version. This is "
+                "used by the deployment startup script and never adds mock "
+                "rows to a database that has real facilities."
             ),
         )
 
     @transaction.atomic
     def handle(self, *args, **options) -> None:
-        if options["if_empty"] and Facility.objects.exists():
-            self.stdout.write(
-                "Facilities already exist; skipping mock seed."
-            )
-            return
-
         mock_ids = [
             mock_facility_id(str(item["key"])) for item in MOCK_FACILITIES
         ]
+
+        if options["if_empty"] and Facility.objects.exclude(
+            pk__in=mock_ids
+        ).exists():
+            self.stdout.write(
+                "Real facilities already exist; skipping mock seed."
+            )
+            return
 
         if options["reset"]:
             deleted, _ = Facility.objects.filter(pk__in=mock_ids).delete()

@@ -64,6 +64,20 @@ class SeedFacilitiesCommandTests(APITestCase):
 
         self.assertEqual(Facility.objects.count(), len(MOCK_FACILITIES))
 
+    def test_if_empty_extends_an_older_mock_seed(self):
+        self.seed()
+        missing_name = "زمین بسکتبال منطقه شش"
+        Facility.objects.filter(name=missing_name).delete()
+        self.assertEqual(Facility.objects.count(), len(MOCK_FACILITIES) - 1)
+
+        output = self.seed(if_empty=True)
+
+        self.assertNotIn("skipping mock seed", output)
+        self.assertEqual(Facility.objects.count(), len(MOCK_FACILITIES))
+        self.assertTrue(
+            Facility.objects.filter(name=missing_name).exists()
+        )
+
     def test_if_empty_skips_a_database_with_real_facilities(self):
         real = Facility.objects.create(
             name="Community Sports Hall",
@@ -80,6 +94,25 @@ class SeedFacilitiesCommandTests(APITestCase):
             Facility.objects.filter(
                 name="Azadi National Football Field"
             ).exists()
+        )
+
+    def test_if_empty_does_not_extend_an_older_mock_seed_with_real_data(self):
+        self.seed()
+        real = Facility.objects.create(
+            name="Community Sports Hall",
+            type="Sports Hall",
+            location="Local Neighborhood",
+        )
+        missing_name = "زمین بسکتبال منطقه شش"
+        Facility.objects.filter(name=missing_name).delete()
+
+        output = self.seed(if_empty=True)
+
+        self.assertIn("skipping mock seed", output)
+        self.assertEqual(Facility.objects.count(), len(MOCK_FACILITIES))
+        self.assertTrue(Facility.objects.filter(pk=real.pk).exists())
+        self.assertFalse(
+            Facility.objects.filter(name=missing_name).exists()
         )
 
     def test_reset_only_deletes_seeded_mock_listings(self):
