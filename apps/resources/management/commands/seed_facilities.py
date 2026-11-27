@@ -16,7 +16,8 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument(
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument(
             "--reset",
             action="store_true",
             help=(
@@ -24,9 +25,24 @@ class Command(BaseCommand):
                 "them again. Real facilities are not affected."
             ),
         )
+        group.add_argument(
+            "--if-empty",
+            action="store_true",
+            help=(
+                "Only seed when there are no facilities at all. This is used "
+                "by the deployment startup script and never adds mock rows to "
+                "a database that already has real facilities."
+            ),
+        )
 
     @transaction.atomic
     def handle(self, *args, **options) -> None:
+        if options["if_empty"] and Facility.objects.exists():
+            self.stdout.write(
+                "Facilities already exist; skipping mock seed."
+            )
+            return
+
         mock_ids = [
             mock_facility_id(str(item["key"])) for item in MOCK_FACILITIES
         ]

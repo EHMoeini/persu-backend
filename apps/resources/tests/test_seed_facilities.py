@@ -59,6 +59,29 @@ class SeedFacilitiesCommandTests(APITestCase):
         self.assertEqual(real.type, "Sports Hall")
         self.assertEqual(real.location, "Local Neighborhood")
 
+    def test_if_empty_seeds_an_empty_database(self):
+        self.seed(if_empty=True)
+
+        self.assertEqual(Facility.objects.count(), len(MOCK_FACILITIES))
+
+    def test_if_empty_skips_a_database_with_real_facilities(self):
+        real = Facility.objects.create(
+            name="Community Sports Hall",
+            type="Sports Hall",
+            location="Local Neighborhood",
+        )
+
+        output = self.seed(if_empty=True)
+
+        self.assertIn("skipping mock seed", output)
+        self.assertEqual(Facility.objects.count(), 1)
+        self.assertTrue(Facility.objects.filter(pk=real.pk).exists())
+        self.assertFalse(
+            Facility.objects.filter(
+                name="Azadi National Football Field"
+            ).exists()
+        )
+
     def test_reset_only_deletes_seeded_mock_listings(self):
         real = Facility.objects.create(
             name="Community Sports Hall",
