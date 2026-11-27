@@ -1,0 +1,59 @@
+"""Seed the database with realistic mock facility listings."""
+
+from __future__ import annotations
+
+from django.core.management.base import BaseCommand
+from django.db import transaction
+
+from apps.resources.mock_data import MOCK_FACILITIES, mock_facility_id
+from apps.resources.models import Facility
+
+
+class Command(BaseCommand):
+    help = (
+        "Create or update the mock facility listings used to exercise the "
+        "search API. Existing non-mock facilities are never modified."
+    )
+
+    def add_arguments(self, parser) -> None:
+        parser.add_argument(
+            "--reset",
+            action="store_true",
+            help=(
+                "Delete the previously seeded mock listings before creating "
+                "them again. Real facilities are not affected."
+            ),
+        )
+
+    @transaction.atomic
+    def handle(self, *args, **options) -> None:
+        mock_ids = [
+            mock_facility_id(str(item["key"])) for item in MOCK_FACILITIES
+        ]
+
+        if options["reset"]:
+            deleted, _ = Facility.objects.filter(pk__in=mock_ids).delete()
+            self.stdout.write(f"Deleted {deleted} seeded mock listing(s).")
+
+        created = 0
+        updated = 0
+        for item in MOCK_FACILITIES:
+            defaults = {
+                field: value
+                for field, value in item.items()
+                if field != "key"
+            }
+            _, was_created = Facility.objects.update_or_create(
+                pk=mock_facility_id(str(item["key"])),
+                defaults=defaults,
+            )
+            if was_created:
+                created += 1
+            else:
+                updated += 1
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Seeded mock facilities: {created} created, {updated} updated."
+            )
+        )
