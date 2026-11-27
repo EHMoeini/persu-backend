@@ -37,6 +37,53 @@ class FacilitySerializer(serializers.ModelSerializer):
         )
 
 
+class FacilityDetailSerializer(serializers.ModelSerializer):
+    """Full facility details including coordinates, pricing, hours, sports, and amenities."""
+
+    price = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        coerce_to_string=False,
+    )
+    rating = serializers.DecimalField(
+        max_digits=2,
+        decimal_places=1,
+        coerce_to_string=False,
+    )
+
+    class Meta:
+        model = Facility
+        fields = (
+            "id",
+            "name",
+            "description",
+            "category",
+            "type",
+            "location",
+            "price",
+            "picture",
+            "rating",
+            "availability",
+            "city",
+            "province",
+            "district",
+            "address",
+            "latitude",
+            "longitude",
+            "phone",
+            "price_irr",
+            "price_display",
+            "rating_count",
+            "opening_hours",
+            "sports",
+            "amenities",
+            "gender",
+            "image_url",
+            "source_name",
+            "source_url",
+        )
+
+
 class FacilityListResponseSerializer(serializers.Serializer):
     """Facility search envelope."""
 

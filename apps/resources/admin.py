@@ -9,11 +9,12 @@ class FacilityAdmin(admin.ModelAdmin):
         "name",
         "category",
         "type",
-        "location",
+        "city",
         "price",
         "rating",
         "availability",
+        "source_name",
     )
-    list_filter = ("category", "type", "availability")
-    search_fields = ("name", "description", "category", "type", "location")
+    list_filter = ("category", "type", "availability", "province", "source_name")
+    search_fields = ("name", "description", "category", "type", "location", "city", "address", "phone")
     ordering = ("name",)

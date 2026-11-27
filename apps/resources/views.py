@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -14,6 +15,7 @@ from apps.common.schema import error_response
 from .models import Facility
 from .search import search_facilities
 from .serializers import (
+    FacilityDetailSerializer,
     FacilityListResponseSerializer,
     FacilitySerializer,
     ProfileUpdateSerializer,
@@ -48,6 +50,20 @@ class FacilityListView(APIView):
                 required=False,
                 description="Partial, case-insensitive search text.",
             ),
+            OpenApiParameter(
+                name="city",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Optional exact city filter (e.g. تهران).",
+            ),
+            OpenApiParameter(
+                name="type",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Optional facility type filter (e.g. فوتسال, استخر).",
+            ),
         ],
         responses={
             200: OpenApiResponse(
@@ -59,10 +75,42 @@ class FacilityListView(APIView):
     )
     def get(self, request) -> Response:
         query = (request.query_params.get("q") or "").strip()
-        facilities = search_facilities(Facility.objects.all(), query)
+        city = (request.query_params.get("city") or "").strip()
+        fac_type = (request.query_params.get("type") or "").strip()
+
+        qs = Facility.objects.all()
+        if city:
+            qs = qs.filter(city__icontains=city)
+        if fac_type:
+            qs = qs.filter(type__icontains=fac_type)
+
+        facilities = search_facilities(qs, query)
         return Response(
             {"facilities": FacilitySerializer(facilities, many=True).data}
         )
+
+
+class FacilityDetailView(APIView):
+    """Public facility detail endpoint."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        tags=["Facilities"],
+        summary="Get facility details",
+        description="Returns full metadata for a single sports facility.",
+        responses={
+            200: OpenApiResponse(
+                response=FacilityDetailSerializer,
+                description="Facility details.",
+            ),
+            404: error_response("Facility not found."),
+        },
+    )
+    def get(self, request, facility_id) -> Response:
+        facility = get_object_or_404(Facility, pk=facility_id)
+        return Response(FacilityDetailSerializer(facility).data)
 
 
 class MeView(APIView):
