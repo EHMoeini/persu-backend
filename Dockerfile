@@ -30,7 +30,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"
 
-# Default container command: apply migrations, seed an empty database, then
-# start Gunicorn. The script is idempotent and safe when a pre-deploy migration
-# step has already run.
+# Default container command: apply migrations, seed mock listings when no real
+# facilities exist, then start Gunicorn. The script is idempotent and safe when
+# a pre-deploy migration step has already run.
 CMD ["sh", "start.sh"]

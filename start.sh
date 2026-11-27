@@ -1,6 +1,6 @@
 #!/bin/sh
-# Start step: apply pending migrations, seed mock listings only when the
-# facilities table is empty, then run Gunicorn.
+# Start step: apply pending migrations, seed mock listings only when there
+# are no real facilities, then run Gunicorn.
 set -eu
 
 python manage.py migrate --noinput

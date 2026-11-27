@@ -63,8 +63,9 @@ listings:
 .\.venv\Scripts\python manage.py seed_facilities --reset
 ```
 
-Use `--if-empty` to seed only when no facilities exist. The deployment startup
-script uses this option automatically.
+Use `--if-empty` to seed only when no real facilities exist; existing mock rows
+are updated and extended. The deployment startup script uses this option
+automatically.
 
 Optional admin account:
 

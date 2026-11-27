@@ -56,9 +56,10 @@ point it at this repository.
 By default the service uses SQLite (`db.sqlite3`). This is fine for a
 prototype, but Render's free instances have an ephemeral filesystem: data is
 lost on every deploy/restart. On startup, `start.sh` applies pending migrations
-and seeds the mock facility listings only when the `facilities` table is empty,
-so a fresh prototype instance still has searchable data. If any real facility
-exists, the mock seed is skipped.
+and seeds the mock facility listings only when no real facilities exist, so a
+fresh prototype instance still has searchable data and an older mock-only
+database gains newly added mock listings. If any real facility exists, the mock
+seed is skipped.
 
 To persist data, create a Render PostgreSQL instance and set the web service's
 `DATABASE_URL` to the database's **Internal Database URL**. The settings file
@@ -75,7 +76,7 @@ PostgreSQL requires `psycopg`, which is already included in
 
 - `build.sh` installs production dependencies and runs `collectstatic`.
 - `python manage.py migrate --noinput` (Pre-Deploy Command) applies database migrations before the new version goes live. This remains the recommended step for zero-downtime deploys.
-- `start.sh` applies any pending migrations, seeds mock listings only if the database is empty, then starts Gunicorn on `$PORT`. The migration and seed steps are idempotent, so running them after the Pre-Deploy Command is safe.
+- `start.sh` applies any pending migrations, seeds mock listings only when no real facilities exist, then starts Gunicorn on `$PORT`. The migration and seed steps are idempotent, so running them after the Pre-Deploy Command is safe.
 
 `requirements-prod.txt` is an alias for `requirements.txt`, which includes
 Gunicorn, PostgreSQL, and Redis. A default Render build that only runs

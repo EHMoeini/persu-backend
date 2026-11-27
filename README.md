@@ -134,7 +134,8 @@ python manage.py seed_facilities --reset
 ```
 
 The deployment startup script runs `python manage.py seed_facilities --if-empty`
-after migrations, so a fresh empty database is populated automatically and a
+after migrations, so an empty database is populated automatically, an older
+mock-only database is updated with any newly added mock listings, and a
 database that already contains real facilities is left untouched. When running
 `runserver` directly, run the seed command manually.
 
@@ -184,8 +185,8 @@ The stack starts with the built-in test defaults:
 docker compose up --build
 ```
 
-The web container applies migrations and seeds mock listings only if the
-database is empty before starting Gunicorn.
+The web container applies migrations and seeds mock listings only when there
+are no real facilities (updating any older mock rows) before starting Gunicorn.
 
 The API listens on `http://localhost:8000`. Check the service and create an
 admin account:
