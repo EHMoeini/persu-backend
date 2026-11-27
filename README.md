@@ -132,6 +132,11 @@ created by real users. To delete and recreate only the mock listings:
 python manage.py seed_facilities --reset
 ```
 
+The deployment startup script runs `python manage.py seed_facilities --if-empty`
+after migrations, so a fresh empty database is populated automatically and a
+database that already contains real facilities is left untouched. When running
+`runserver` directly, run the seed command manually.
+
 The mock definitions live in `apps/resources/mock_data.py`, so they are easy to
 update or extend. Replace the placeholder pictures with production image URLs
 when real listings are added.
@@ -178,6 +183,9 @@ The stack starts with the built-in test defaults:
 docker compose up --build
 ```
 
+The web container applies migrations and seeds mock listings only if the
+database is empty before starting Gunicorn.
+
 The API listens on `http://localhost:8000`. Check the service and create an
 admin account:
 
@@ -221,6 +229,7 @@ deployment, set the environment variables first, then run:
 ```bash
 pip install -r requirements-prod.txt
 python manage.py migrate
+python manage.py seed_facilities --if-empty
 python manage.py collectstatic --noinput
 gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
 ```
