@@ -34,11 +34,11 @@ class Command(BaseCommand):
             "--if-empty",
             action="store_true",
             help=(
-                "Only seed when there are no real facilities. Existing mock "
-                "rows are updated, retired mock rows are removed, and newly "
-                "defined listings are added to a database seeded by an older "
-                "version. This is used by the deployment startup script and "
-                "never adds mock rows to a database that has real facilities."
+                "Only seed when there are no real facilities. Retired mock "
+                "rows are removed first; when seeding proceeds, existing mock "
+                "rows are updated and newly defined listings are added. This "
+                "is used by the deployment startup script and never adds mock "
+                "rows to a database that has real facilities."
             ),
         )
 
@@ -52,6 +52,10 @@ class Command(BaseCommand):
         ]
         known_mock_ids = current_ids + retired_ids
 
+        deleted, _ = Facility.objects.filter(pk__in=retired_ids).delete()
+        if deleted:
+            self.stdout.write(f"Deleted {deleted} retired mock listing(s).")
+
         if options["if_empty"] and Facility.objects.exclude(
             pk__in=known_mock_ids
         ).exists():
@@ -61,16 +65,8 @@ class Command(BaseCommand):
             return
 
         if options["reset"]:
-            deleted, _ = Facility.objects.filter(
-                pk__in=known_mock_ids
-            ).delete()
+            deleted, _ = Facility.objects.filter(pk__in=current_ids).delete()
             self.stdout.write(f"Deleted {deleted} seeded mock listing(s).")
-        else:
-            deleted, _ = Facility.objects.filter(pk__in=retired_ids).delete()
-            if deleted:
-                self.stdout.write(
-                    f"Deleted {deleted} retired mock listing(s)."
-                )
 
         created = 0
         updated = 0

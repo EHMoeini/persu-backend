@@ -130,6 +130,28 @@ class SeedFacilitiesCommandTests(APITestCase):
             ).exists()
         )
 
+    def test_if_empty_removes_retired_english_rows_with_real_data(self):
+        retired_id = mock_facility_id("azadi-national-football-field")
+        Facility.objects.create(
+            pk=retired_id,
+            name="Azadi National Football Field",
+            type="Soccer Field",
+            location="Azadi Sports Complex, Tehran",
+        )
+        real = Facility.objects.create(
+            name="Community Sports Hall",
+            type="Sports Hall",
+            location="Local Neighborhood",
+        )
+
+        output = self.seed(if_empty=True)
+
+        self.assertIn("retired mock listing", output)
+        self.assertIn("skipping mock seed", output)
+        self.assertFalse(Facility.objects.filter(pk=retired_id).exists())
+        self.assertTrue(Facility.objects.filter(pk=real.pk).exists())
+        self.assertEqual(Facility.objects.count(), 1)
+
     def test_if_empty_does_not_extend_an_older_mock_seed_with_real_data(self):
         self.seed()
         real = Facility.objects.create(
