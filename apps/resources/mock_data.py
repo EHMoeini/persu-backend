@@ -3,6 +3,10 @@
 Each entry has a stable ``key``. The seeder derives a deterministic UUID from
 that key, so running it repeatedly updates the same mock rows instead of
 creating duplicates and never touches facilities created by real users.
+
+The mock catalogue is Persian-only. ``RETIRED_MOCK_FACILITY_KEYS`` lists mock
+keys from older catalogue versions so the seeder can remove those rows when an
+existing database is updated.
 """
 
 from __future__ import annotations
@@ -22,245 +26,41 @@ def mock_facility_id(key: str) -> uuid.UUID:
     return uuid.uuid5(MOCK_FACILITY_NAMESPACE, key)
 
 
+RETIRED_MOCK_FACILITY_KEYS: tuple[str, ...] = (
+    "azadi-national-football-field",
+    "enghelab-artificial-turf",
+    "futsal-arena-7",
+    "olympic-swimming-pool",
+    "riverside-tennis-court",
+    "persepolis-badminton-hall",
+    "mirdamad-table-tennis-club",
+    "iron-gym-fitness-center",
+    "serenity-yoga-studio",
+    "district-6-basketball-court",
+    "chitgar-beach-volleyball-court",
+    "samurai-martial-arts-dojo",
+    "aras-climbing-wall",
+)
+
+
 MOCK_FACILITIES: tuple[dict[str, object], ...] = (
     {
-        "key": "azadi-national-football-field",
-        "name": "Azadi National Football Field",
+        "key": "azadi-national-football-field-fa",
+        "name": "زمین فوتبال ملی آزادی",
         "description": (
-            "Full-size natural-grass football pitch inside the Azadi Sports "
-            "Complex, with floodlights and covered seating."
-        ),
-        "category": "Football",
-        "type": "Soccer Field",
-        "location": "Azadi Sports Complex, Tehran",
-        "price": Decimal("1800000.00"),
-        "picture": "https://picsum.photos/seed/azadi-football/800/600",
-        "rating": Decimal("4.8"),
-        "availability": True,
-    },
-    {
-        "key": "enghelab-artificial-turf",
-        "name": "Enghelab Artificial Turf",
-        "description": (
-            "FIFA-standard artificial turf pitch for football and futsal, "
-            "available for hourly bookings."
-        ),
-        "category": "Football",
-        "type": "Artificial Turf",
-        "location": "Enghelab Sports Complex, Tehran",
-        "price": Decimal("950000.00"),
-        "picture": "https://picsum.photos/seed/enghelab-turf/800/600",
-        "rating": Decimal("4.4"),
-        "availability": True,
-    },
-    {
-        "key": "futsal-arena-7",
-        "name": "Futsal Arena 7",
-        "description": (
-            "Indoor futsal court with professional flooring, changing rooms, "
-            "and spectator seating."
-        ),
-        "category": "Football",
-        "type": "Futsal Court",
-        "location": "East Side, Tehran",
-        "price": Decimal("700000.00"),
-        "picture": "https://picsum.photos/seed/futsal-arena/800/600",
-        "rating": Decimal("4.3"),
-        "availability": True,
-    },
-    {
-        "key": "pars-football-field",
-        "name": "زمین فوتبال پارس",
-        "description": (
-            "زمین چمن مصنوعی استاندارد برای فوتبال و فوتسال با نورپردازی "
-            "شبانه و رختکن مجهز."
-        ),
-        "category": "Football",
-        "type": "Soccer Field",
-        "location": "تهران، سعادت‌آباد",
-        "price": Decimal("1100000.00"),
-        "picture": "https://picsum.photos/seed/pars-football/800/600",
-        "rating": Decimal("4.6"),
-        "availability": True,
-    },
-    {
-        "key": "olympic-swimming-pool",
-        "name": "Olympic Swimming Pool",
-        "description": (
-            "Fifty-meter indoor swimming pool with eight lanes, a children's "
-            "pool, and certified lifeguards."
-        ),
-        "category": "Swimming",
-        "type": "Swimming Pool",
-        "location": "Vanak, Tehran",
-        "price": Decimal("350000.00"),
-        "picture": "https://picsum.photos/seed/olympic-pool/800/600",
-        "rating": Decimal("4.7"),
-        "availability": True,
-    },
-    {
-        "key": "pars-indoor-pool",
-        "name": "استخر سرپوشیده پارس",
-        "description": (
-            "استخر سرپوشیده با آب گرم، سونا و جکوزی برای شنای تفریحی و "
-            "تمرین حرفه‌ای."
-        ),
-        "category": "Swimming",
-        "type": "Indoor Pool",
-        "location": "تهران، پاسداران",
-        "price": Decimal("380000.00"),
-        "picture": "https://picsum.photos/seed/pars-pool/800/600",
-        "rating": Decimal("4.4"),
-        "availability": False,
-    },
-    {
-        "key": "riverside-tennis-court",
-        "name": "Riverside Tennis Court",
-        "description": (
-            "Two outdoor hard tennis courts with evening lighting and racket "
-            "rental."
-        ),
-        "category": "Racket Sports",
-        "type": "Tennis Court",
-        "location": "Riverside, Tehran",
-        "price": Decimal("500000.00"),
-        "picture": "https://picsum.photos/seed/riverside-tennis/800/600",
-        "rating": Decimal("4.5"),
-        "availability": True,
-    },
-    {
-        "key": "persepolis-badminton-hall",
-        "name": "Persepolis Badminton Hall",
-        "description": (
-            "Six indoor badminton courts with wooden flooring and equipment "
-            "rental."
-        ),
-        "category": "Racket Sports",
-        "type": "Badminton Hall",
-        "location": "Shahrak-e Gharb, Tehran",
-        "price": Decimal("420000.00"),
-        "picture": "https://picsum.photos/seed/badminton-hall/800/600",
-        "rating": Decimal("4.2"),
-        "availability": True,
-    },
-    {
-        "key": "mirdamad-table-tennis-club",
-        "name": "Mirdamad Table Tennis Club",
-        "description": (
-            "Table tennis club with eight competition tables and coaching "
-            "sessions for all levels."
-        ),
-        "category": "Racket Sports",
-        "type": "Table Tennis Hall",
-        "location": "Mirdamad, Tehran",
-        "price": Decimal("180000.00"),
-        "picture": "https://picsum.photos/seed/table-tennis/800/600",
-        "rating": Decimal("4.0"),
-        "availability": True,
-    },
-    {
-        "key": "iron-gym-fitness-center",
-        "name": "Iron Gym Fitness Center",
-        "description": (
-            "Modern fitness center with strength machines, free weights, a "
-            "cardio zone, and personal trainers."
-        ),
-        "category": "Fitness",
-        "type": "Gym",
-        "location": "Tajrish, Tehran",
-        "price": Decimal("250000.00"),
-        "picture": "https://picsum.photos/seed/iron-gym/800/600",
-        "rating": Decimal("4.9"),
-        "availability": True,
-    },
-    {
-        "key": "serenity-yoga-studio",
-        "name": "Serenity Yoga Studio",
-        "description": (
-            "Calm yoga studio offering hatha, vinyasa, and meditation classes "
-            "in small groups."
-        ),
-        "category": "Fitness",
-        "type": "Yoga Studio",
-        "location": "Zafaraniyeh, Tehran",
-        "price": Decimal("280000.00"),
-        "picture": "https://picsum.photos/seed/serenity-yoga/800/600",
-        "rating": Decimal("4.7"),
-        "availability": True,
-    },
-    {
-        "key": "district-6-basketball-court",
-        "name": "District 6 Basketball Court",
-        "description": (
-            "Outdoor basketball court with a rebound board and evening "
-            "lighting, suitable for 3x3 games."
-        ),
-        "category": "Basketball",
-        "type": "Basketball Court",
-        "location": "District 6, Tehran",
-        "price": Decimal("300000.00"),
-        "picture": "https://picsum.photos/seed/basketball-court/800/600",
-        "rating": Decimal("4.1"),
-        "availability": True,
-    },
-    {
-        "key": "chitgar-beach-volleyball-court",
-        "name": "Chitgar Beach Volleyball Court",
-        "description": (
-            "Sandy beach volleyball court beside Chitgar Lake with nets and "
-            "showers."
-        ),
-        "category": "Volleyball",
-        "type": "Beach Volleyball Court",
-        "location": "Chitgar Lake, Tehran",
-        "price": Decimal("450000.00"),
-        "picture": "https://picsum.photos/seed/beach-volleyball/800/600",
-        "rating": Decimal("4.6"),
-        "availability": True,
-    },
-    {
-        "key": "samurai-martial-arts-dojo",
-        "name": "Samurai Martial Arts Dojo",
-        "description": (
-            "Traditional dojo for karate, judo, and self-defense classes led "
-            "by certified coaches."
-        ),
-        "category": "Martial Arts",
-        "type": "Dojo",
-        "location": "Narmak, Tehran",
-        "price": Decimal("320000.00"),
-        "picture": "https://picsum.photos/seed/martial-arts-dojo/800/600",
-        "rating": Decimal("4.5"),
-        "availability": True,
-    },
-    {
-        "key": "aras-climbing-wall",
-        "name": "Aras Climbing Wall",
-        "description": (
-            "Indoor climbing gym with bouldering walls, top-rope routes, and "
-            "beginner lessons."
-        ),
-        "category": "Climbing",
-        "type": "Climbing Gym",
-        "location": "Abbasabad, Tehran",
-        "price": Decimal("400000.00"),
-        "picture": "https://picsum.photos/seed/aras-climbing/800/600",
-        "rating": Decimal("4.6"),
-        "availability": True,
-    },
-    {
-        "key": "city-multi-sport-hall",
-        "name": "سالن ورزشی چندمنظوره شهر",
-        "description": (
-            "سالن ورزشی سرپوشیده برای والیبال، بسکتبال و تمرین‌های گروهی با "
+            "زمین چمن طبیعی استاندارد در مجموعه ورزشی آزادی با نورافکن، "
             "رختکن و جایگاه تماشاگر."
         ),
-        "category": "Multi-Sport",
-        "type": "Sports Hall",
-        "location": "تهران، مرکز شهر",
-        "price": Decimal("550000.00"),
-        "picture": "https://picsum.photos/seed/multi-sport-hall/800/600",
-        "rating": Decimal("4.3"),
+        "category": "Football",
+        "type": "زمین فوتبال",
+        "location": "تهران، مجموعه ورزشی آزادی",
+        "price": Decimal("1800000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ed/"
+            "Kwu_Tung_Grass_Pitch_201708.jpg/960px-"
+            "Kwu_Tung_Grass_Pitch_201708.jpg"
+        ),
+        "rating": Decimal("4.8"),
         "availability": True,
     },
     {
@@ -274,7 +74,161 @@ MOCK_FACILITIES: tuple[dict[str, object], ...] = (
         "type": "چمن مصنوعی",
         "location": "تهران، مجموعه ورزشی انقلاب",
         "price": Decimal("980000.00"),
-        "picture": "https://picsum.photos/seed/enghelab-turf-fa/800/600",
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ed/"
+            "Football_pitch_with_artificial_grass_%28Bratislava_IV%29.jpg/"
+            "960px-Football_pitch_with_artificial_grass_%28Bratislava_IV%29.jpg"
+        ),
+        "rating": Decimal("4.5"),
+        "availability": True,
+    },
+    {
+        "key": "pars-football-field",
+        "name": "زمین فوتبال پارس",
+        "description": (
+            "زمین چمن مصنوعی یازده‌نفره با نورپردازی شبانه، رختکن و پارکینگ "
+            "در سعادت‌آباد."
+        ),
+        "category": "Football",
+        "type": "زمین فوتبال",
+        "location": "تهران، سعادت‌آباد",
+        "price": Decimal("1100000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/"
+            "Football_pitch_with_artificial_grass_%28Karlova_Ves%29.jpg/"
+            "960px-Football_pitch_with_artificial_grass_%28Karlova_Ves%29.jpg"
+        ),
+        "rating": Decimal("4.6"),
+        "availability": True,
+    },
+    {
+        "key": "futsal-arena-7-fa",
+        "name": "سالن فوتسال آرنا ۷",
+        "description": (
+            "سالن فوتسال سرپوشیده با کف حرفه‌ای، رختکن و جایگاه تماشاگر در "
+            "شرق تهران."
+        ),
+        "category": "Football",
+        "type": "سالن فوتسال",
+        "location": "تهران، شرق",
+        "price": Decimal("700000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/93/"
+            "Futsal_Court.jpg/960px-Futsal_Court.jpg"
+        ),
+        "rating": Decimal("4.3"),
+        "availability": True,
+    },
+    {
+        "key": "yas-futsal-hall-fa",
+        "name": "سالن فوتسال یاس",
+        "description": (
+            "زمین فوتسال سرپوشیده با کف استاندارد و نورپردازی مناسب برای "
+            "بازی‌های شبانه."
+        ),
+        "category": "Football",
+        "type": "سالن فوتسال",
+        "location": "تهران، ونک",
+        "price": Decimal("760000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/"
+            "Tokyo_Yoyogi_futsal_court.JPG/960px-"
+            "Tokyo_Yoyogi_futsal_court.JPG"
+        ),
+        "rating": Decimal("4.2"),
+        "availability": False,
+    },
+    {
+        "key": "chitgar-football-field-fa",
+        "name": "زمین فوتبال چیتگر",
+        "description": (
+            "زمین چمن مصنوعی کنار دریاچه چیتگر با نورافکن و رختکن، مناسب "
+            "بازی‌های یازده‌نفره."
+        ),
+        "category": "Football",
+        "type": "زمین فوتبال",
+        "location": "تهران، دریاچه چیتگر",
+        "price": Decimal("1250000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/"
+            "College_Point_Fields_td_%282019-08-03%29_178_-_Turf_Soccer_Field.jpg/"
+            "960px-College_Point_Fields_td_%282019-08-03%29_178_-_Turf_Soccer_Field.jpg"
+        ),
+        "rating": Decimal("4.4"),
+        "availability": True,
+    },
+    {
+        "key": "pars-indoor-pool",
+        "name": "استخر سرپوشیده پارس",
+        "description": (
+            "استخر سرپوشیده با آب گرم، سونا و جکوزی برای شنای تفریحی و "
+            "تمرین حرفه‌ای."
+        ),
+        "category": "Swimming",
+        "type": "استخر سرپوشیده",
+        "location": "تهران، پاسداران",
+        "price": Decimal("380000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/"
+            "Monroe_Community_College_Swimming_Pool.jpg/960px-"
+            "Monroe_Community_College_Swimming_Pool.jpg"
+        ),
+        "rating": Decimal("4.4"),
+        "availability": False,
+    },
+    {
+        "key": "olympic-swimming-pool-fa",
+        "name": "استخر المپیک تهران",
+        "description": (
+            "استخر ۵۰ متری با هشت خط، سکوی شروع، استخر کودکان و "
+            "نجات‌غریق."
+        ),
+        "category": "Swimming",
+        "type": "استخر المپیک",
+        "location": "تهران، ونک",
+        "price": Decimal("350000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c3/"
+            "Swimming_Pool_lanes_and_starting_blocks.jpg/960px-"
+            "Swimming_Pool_lanes_and_starting_blocks.jpg"
+        ),
+        "rating": Decimal("4.7"),
+        "availability": True,
+    },
+    {
+        "key": "mehr-public-pool-fa",
+        "name": "استخر عمومی مهر",
+        "description": (
+            "استخر سرپوشیده ۲۵ متری با خطوط شنا، کلاس‌های آموزش و رختکن."
+        ),
+        "category": "Swimming",
+        "type": "استخر عمومی",
+        "location": "تهران، نارمک",
+        "price": Decimal("300000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/"
+            "Large_50_m_public_swimming_pool_%27Westbad%27_in_Munich_without_"
+            "people_n.2.jpg/960px-Large_50_m_public_swimming_pool_%27Westbad%27_"
+            "in_Munich_without_people_n.2.jpg"
+        ),
+        "rating": Decimal("4.2"),
+        "availability": True,
+    },
+    {
+        "key": "morvarid-family-pool-fa",
+        "name": "استخر خانوادگی مروارید",
+        "description": (
+            "استخر سرپوشیده خانوادگی با بخش کم‌عمق کودکان، سونا و جکوزی."
+        ),
+        "category": "Swimming",
+        "type": "استخر خانوادگی",
+        "location": "تهران، شهرک غرب",
+        "price": Decimal("420000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/"
+            "Public_Swimming_Pool_in_Melbourne_VIC_Australia.jpg/960px-"
+            "Public_Swimming_Pool_in_Melbourne_VIC_Australia.jpg"
+        ),
         "rating": Decimal("4.5"),
         "availability": True,
     },
@@ -288,8 +242,31 @@ MOCK_FACILITIES: tuple[dict[str, object], ...] = (
         "type": "زمین تنیس",
         "location": "تهران، رودخانه",
         "price": Decimal("520000.00"),
-        "picture": "https://picsum.photos/seed/riverside-tennis-fa/800/600",
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/"
+            "Hard_Court_at_the_Weald_Tennis_Club_-_geograph.org.uk_-_5126192.jpg/"
+            "960px-Hard_Court_at_the_Weald_Tennis_Club_-_geograph.org.uk_-_5126192.jpg"
+        ),
         "rating": Decimal("4.4"),
+        "availability": True,
+    },
+    {
+        "key": "pasdaran-clay-tennis-court-fa",
+        "name": "زمین تنیس خاکی پاسداران",
+        "description": (
+            "زمین تنیس خاکی با کف استاندارد، نورپردازی و کلاس‌های آموزشی."
+        ),
+        "category": "Racket Sports",
+        "type": "زمین تنیس خاکی",
+        "location": "تهران، پاسداران",
+        "price": Decimal("600000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a1/"
+            "Empty_clay_tennis_court_in_Melbourne_Australia_looking_down_the_"
+            "middle.jpg/960px-Empty_clay_tennis_court_in_Melbourne_Australia_"
+            "looking_down_the_middle.jpg"
+        ),
+        "rating": Decimal("4.6"),
         "availability": True,
     },
     {
@@ -302,7 +279,10 @@ MOCK_FACILITIES: tuple[dict[str, object], ...] = (
         "type": "سالن بدمینتون",
         "location": "تهران، شهرک غرب",
         "price": Decimal("430000.00"),
-        "picture": "https://picsum.photos/seed/badminton-hall-fa/800/600",
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/25/"
+            "Badminton_court_view.jpg/960px-Badminton_court_view.jpg"
+        ),
         "rating": Decimal("4.3"),
         "availability": True,
     },
@@ -317,7 +297,11 @@ MOCK_FACILITIES: tuple[dict[str, object], ...] = (
         "type": "سالن تنیس روی میز",
         "location": "تهران، میرداماد",
         "price": Decimal("190000.00"),
-        "picture": "https://picsum.photos/seed/table-tennis-fa/800/600",
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/"
+            "Inter-_senior_schools_table_tennis_tournament_involving_boys.jpg/"
+            "960px-Inter-_senior_schools_table_tennis_tournament_involving_boys.jpg"
+        ),
         "rating": Decimal("4.1"),
         "availability": True,
     },
@@ -325,14 +309,36 @@ MOCK_FACILITIES: tuple[dict[str, object], ...] = (
         "key": "iron-gym-fitness-center-fa",
         "name": "باشگاه بدنسازی آهن",
         "description": (
-            "باشگاه بدنسازی مجهز به دستگاه‌های قدرتی، وزنه آزاد و منطقه هوازی."
+            "باشگاه بدنسازی مجهز به دستگاه‌های قدرتی، وزنه آزاد و منطقه "
+            "هوازی."
         ),
         "category": "Fitness",
         "type": "باشگاه بدنسازی",
         "location": "تهران، تجریش",
         "price": Decimal("260000.00"),
-        "picture": "https://picsum.photos/seed/iron-gym-fa/800/600",
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/36/"
+            "Gym_Free-weights_Area.jpg/960px-Gym_Free-weights_Area.jpg"
+        ),
         "rating": Decimal("4.8"),
+        "availability": True,
+    },
+    {
+        "key": "pahlavan-gym-fa",
+        "name": "باشگاه بدنسازی پهلوان",
+        "description": (
+            "باشگاه بدنسازی محلی با دستگاه‌های کامل، وزنه آزاد و مربی "
+            "خصوصی."
+        ),
+        "category": "Fitness",
+        "type": "باشگاه بدنسازی",
+        "location": "تهران، افسریه",
+        "price": Decimal("220000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/aa/"
+            "Local_Gym_equipment.jpg/960px-Local_Gym_equipment.jpg"
+        ),
+        "rating": Decimal("4.2"),
         "availability": True,
     },
     {
@@ -346,7 +352,10 @@ MOCK_FACILITIES: tuple[dict[str, object], ...] = (
         "type": "استودیو یوگا",
         "location": "تهران، زعفرانیه",
         "price": Decimal("290000.00"),
-        "picture": "https://picsum.photos/seed/serenity-yoga-fa/800/600",
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/60/"
+            "Yoga_Studio_in_Canoa.jpg/960px-Yoga_Studio_in_Canoa.jpg"
+        ),
         "rating": Decimal("4.6"),
         "availability": True,
     },
@@ -354,15 +363,38 @@ MOCK_FACILITIES: tuple[dict[str, object], ...] = (
         "key": "district-6-basketball-court-fa",
         "name": "زمین بسکتبال منطقه شش",
         "description": (
-            "زمین بسکتبال روباز با تخته برگشت و نورپردازی شبانه برای بازی‌های "
-            "سه به سه."
+            "زمین بسکتبال روباز با تخته برگشت و نورپردازی شبانه برای "
+            "بازی‌های سه به سه."
         ),
         "category": "Basketball",
         "type": "زمین بسکتبال",
         "location": "تهران، منطقه ۶",
         "price": Decimal("310000.00"),
-        "picture": "https://picsum.photos/seed/basketball-court-fa/800/600",
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2c/"
+            "Outdoor_basketball_court%2C_Hurst_Park%2C_Molesey%2C_Surrey_02.jpg/"
+            "960px-Outdoor_basketball_court%2C_Hurst_Park%2C_Molesey%2C_Surrey_02.jpg"
+        ),
         "rating": Decimal("4.2"),
+        "availability": True,
+    },
+    {
+        "key": "niavaran-covered-basketball-court-fa",
+        "name": "زمین بسکتبال سرپوشیده نیاوران",
+        "description": (
+            "زمین بسکتبال سرپوشیده با کف استاندارد و سقف بلند، مناسب بازی "
+            "در همه فصل‌ها."
+        ),
+        "category": "Basketball",
+        "type": "زمین بسکتبال سرپوشیده",
+        "location": "تهران، نیاوران",
+        "price": Decimal("360000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3e/"
+            "Kai_Chuen_Court_Basketball_Court.jpg/960px-"
+            "Kai_Chuen_Court_Basketball_Court.jpg"
+        ),
+        "rating": Decimal("4.5"),
         "availability": True,
     },
     {
@@ -375,8 +407,31 @@ MOCK_FACILITIES: tuple[dict[str, object], ...] = (
         "type": "زمین والیبال ساحلی",
         "location": "تهران، دریاچه چیتگر",
         "price": Decimal("460000.00"),
-        "picture": "https://picsum.photos/seed/beach-volleyball-fa/800/600",
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/"
+            "Scioto_Audubon_-_Volleyball_Courts_1.jpg/960px-"
+            "Scioto_Audubon_-_Volleyball_Courts_1.jpg"
+        ),
         "rating": Decimal("4.5"),
+        "availability": True,
+    },
+    {
+        "key": "kish-beach-volleyball-court-fa",
+        "name": "زمین والیبال ساحلی کیش",
+        "description": (
+            "زمین والیبال ساحلی در ساحل مرجان کیش با تور استاندارد و "
+            "نورپردازی شبانه."
+        ),
+        "category": "Volleyball",
+        "type": "زمین والیبال ساحلی",
+        "location": "کیش، ساحل مرجان",
+        "price": Decimal("500000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ef/"
+            "Bondues_beach_volley_aerodrome.jpg/960px-"
+            "Bondues_beach_volley_aerodrome.jpg"
+        ),
+        "rating": Decimal("4.7"),
         "availability": True,
     },
     {
@@ -390,8 +445,34 @@ MOCK_FACILITIES: tuple[dict[str, object], ...] = (
         "type": "دوجو",
         "location": "تهران، نارمک",
         "price": Decimal("330000.00"),
-        "picture": "https://picsum.photos/seed/martial-arts-dojo-fa/800/600",
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/82/"
+            "Disciplina_que_fortalece_cuerpo_y_mente%2C_Club_de_Karate_Musha_"
+            "Dojo_-_Karate_Kyokushin-Kan.jpg/960px-Disciplina_que_fortalece_"
+            "cuerpo_y_mente%2C_Club_de_Karate_Musha_Dojo_-_Karate_Kyokushin-"
+            "Kan.jpg"
+        ),
         "rating": Decimal("4.4"),
+        "availability": True,
+    },
+    {
+        "key": "musha-karate-dojo-fa",
+        "name": "دوجوی کاراته موشا",
+        "description": (
+            "دوجوی کاراته کیوکوشین با کلاس‌های کودک و بزرگسال و تمرین‌های "
+            "آمادگی جسمانی."
+        ),
+        "category": "Martial Arts",
+        "type": "دوجوی کاراته",
+        "location": "تهران، سعادت‌آباد",
+        "price": Decimal("350000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/"
+            "Concentraci%C3%B3n_antes_del_movimiento%2C_Club_de_Karate_Musha_"
+            "Dojo-Karate_Kyokushin-Kan.jpg/960px-Concentraci%C3%B3n_antes_del_"
+            "movimiento%2C_Club_de_Karate_Musha_Dojo-Karate_Kyokushin-Kan.jpg"
+        ),
+        "rating": Decimal("4.7"),
         "availability": True,
     },
     {
@@ -405,8 +486,49 @@ MOCK_FACILITIES: tuple[dict[str, object], ...] = (
         "type": "سالن سنگ‌نوردی",
         "location": "تهران، عباس‌آباد",
         "price": Decimal("410000.00"),
-        "picture": "https://picsum.photos/seed/aras-climbing-fa/800/600",
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/"
+            "Indoor_Climbing_Wall_Bouldering_Mats.jpg/960px-"
+            "Indoor_Climbing_Wall_Bouldering_Mats.jpg"
+        ),
         "rating": Decimal("4.5"),
+        "availability": True,
+    },
+    {
+        "key": "alborz-climbing-gym-fa",
+        "name": "سالن سنگ‌نوردی البرز",
+        "description": (
+            "سالن سنگ‌نوردی با دیواره بولدرینگ و لید، اجاره تجهیزات و مربی."
+        ),
+        "category": "Climbing",
+        "type": "سالن سنگ‌نوردی",
+        "location": "تهران، اکباتان",
+        "price": Decimal("450000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/"
+            "Gorliz_sports_center_climbing_gym.jpg/960px-"
+            "Gorliz_sports_center_climbing_gym.jpg"
+        ),
+        "rating": Decimal("4.6"),
+        "availability": False,
+    },
+    {
+        "key": "city-multi-sport-hall",
+        "name": "سالن ورزشی چندمنظوره شهر",
+        "description": (
+            "سالن ورزشی سرپوشیده برای والیبال، بسکتبال و تمرین‌های گروهی با "
+            "رختکن و جایگاه تماشاگر."
+        ),
+        "category": "Multi-Sport",
+        "type": "سالن ورزشی چندمنظوره",
+        "location": "تهران، مرکز شهر",
+        "price": Decimal("550000.00"),
+        "picture": (
+            "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/"
+            "Interior_overview_of_the_indoor_sports_hall_at_OAU_Gymnasium.jpg/"
+            "960px-Interior_overview_of_the_indoor_sports_hall_at_OAU_Gymnasium.jpg"
+        ),
+        "rating": Decimal("4.3"),
         "availability": True,
     },
 )
