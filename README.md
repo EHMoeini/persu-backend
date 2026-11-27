@@ -2,10 +2,12 @@
 
 ## Project Overview
 
-Persu Backend is a Django REST Framework API for phone-based authentication and
-authenticated user profiles. Users are identified by a normalized E.164 phone
-number and can register, log in, refresh sessions, read their profile, and update
-their nickname and avatar.
+Persu Backend is a Django REST Framework API for phone-based authentication,
+authenticated user profiles, and public sports-facility search. Users are
+identified by a normalized E.164 phone number and can register, log in, refresh
+sessions, read their profile, and update their nickname and avatar. Anyone can
+search facility listings by Persian or English name, category, type, location,
+or description.
 
 Technologies used:
 
@@ -25,7 +27,7 @@ Project layout:
 ```text
 config/                 Django project settings and root URL configuration
 apps/accounts/          User model, phone normalization, tokens, auth API
-apps/resources/         Authenticated profile API
+apps/resources/         Facility search API, profile API, mock data seeder
 apps/common/            Health endpoint and shared error handling
 Dockerfile              Production image using Gunicorn and WhiteNoise
 docker-compose.yml      PostgreSQL, Redis, and web services for test deployment
@@ -111,6 +113,28 @@ python manage.py migrate
 
 If `DB_PASSWORD` is omitted, the test-only password from `config/settings.py`
 is used. Always set a real password for a shared database.
+
+### 4b. Seed optional mock facility listings
+
+The search API starts with an empty database. Populate it with realistic mock
+listings covering football, swimming, racket sports, fitness, basketball,
+volleyball, martial arts, climbing, and multi-sport venues:
+
+```bash
+python manage.py seed_facilities
+```
+
+The command is idempotent: each mock listing has a stable ID, so rerunning it
+updates those rows instead of creating duplicates. It never modifies facilities
+created by real users. To delete and recreate only the mock listings:
+
+```bash
+python manage.py seed_facilities --reset
+```
+
+The mock definitions live in `apps/resources/mock_data.py`, so they are easy to
+update or extend. Replace the placeholder pictures with production image URLs
+when real listings are added.
 
 ### 5. Run the development server
 
@@ -293,6 +317,7 @@ the JSON API.
 | POST | `/auth/otp/verify` | Validates the mock OTP code and returns a real access token, refresh token, and user. Creates the user if the phone is unknown. | None; requires `code` in the body; throttled at 10/min per normalized phone. |
 | GET | `/api/me` | Returns the authenticated user's profile. | Bearer access token; active user required; CORS enabled. |
 | PATCH | `/api/me` | Updates `nickName` and/or `avatar`; returns the updated user. | Bearer access token; active user required; CORS enabled. |
+| GET | `/api/facilities` | Searches facility listings by partial Persian/English text; `q` is optional. | None; CORS enabled. |
 
 ### Request fields
 
@@ -347,6 +372,45 @@ omitted.
 `{"success": true}`. `/auth/otp/verify` returns the same token-and-user shape as
 login and registration; only code validation is mocked. Unknown paths return
 `404`.
+
+### Facility search
+
+`GET /api/facilities` is public and accepts an optional `q` query parameter.
+Search is partial, case-insensitive, and covers name, description, category,
+type, and location. Persian/Arabic character variants, ZWNJ, extra spaces, and
+small spelling mistakes are normalized. A missing or blank `q` returns every
+listing. No matches return `{"facilities": []}`.
+
+Example requests:
+
+```http
+GET /api/facilities?q=swimming
+GET /api/facilities?q=foot
+GET /api/facilities?q=artificial%20turf
+GET /api/facilities?q=%D8%B4%D9%86%D8%A7
+GET /api/facilities?q=helicopter
+```
+
+Example response:
+
+```json
+{
+  "facilities": [
+    {
+      "id": "22e7597f-5f3f-5046-9384-2699b9e08049",
+      "name": "Olympic Swimming Pool",
+      "description": "Fifty-meter indoor swimming pool with eight lanes, a children's pool, and certified lifeguards.",
+      "category": "Swimming",
+      "type": "Swimming Pool",
+      "location": "Vanak, Tehran",
+      "price": 350000.0,
+      "picture": "https://picsum.photos/seed/olympic-pool/800/600",
+      "rating": 4.7,
+      "availability": true
+    }
+  ]
+}
+```
 
 ### Status codes
 

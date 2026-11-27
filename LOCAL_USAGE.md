@@ -50,6 +50,19 @@ These variables apply only to the current PowerShell session.
 .\.venv\Scripts\python manage.py migrate
 ```
 
+Optional mock facility data for the public search API:
+
+```powershell
+.\.venv\Scripts\python manage.py seed_facilities
+```
+
+Rerun the command safely at any time, or use `--reset` to recreate only the mock
+listings:
+
+```powershell
+.\.venv\Scripts\python manage.py seed_facilities --reset
+```
+
 Optional admin account:
 
 ```powershell
@@ -80,6 +93,12 @@ Expected response:
 
 ```json
 {"status": "ok"}
+```
+
+Search the seeded facility listings:
+
+```powershell
+Invoke-RestMethod -Uri "$base/api/facilities?q=swimming"
 ```
 
 ## 7. Authentication walkthrough
