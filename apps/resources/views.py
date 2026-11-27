@@ -30,12 +30,13 @@ class FacilityListView(APIView):
         tags=["Facilities"],
         summary="Search facilities",
         description=(
-            "Searches facility name, type, and location in Persian or English. "
-            "Matches are partial, case-insensitive, and tolerant of Persian/"
-            "Arabic character variants (`ي`/`ی`, `ك`/`ک`), extra spaces, and "
-            "ZWNJ, and small spelling variations. Related terms are recognized, "
-            "so `شنا` finds pools and `فوتبال` finds artificial turf. Results are "
-            "ordered by relevance. "
+            "Searches facility name, description, category, type, and location "
+            "in Persian or English. Matches are partial, case-insensitive, and "
+            "tolerant of Persian/Arabic character variants (`ي`/`ی`, `ك`/`ک`), "
+            "extra spaces, and ZWNJ, and small spelling variations. Related "
+            "terms are recognized, so `شنا` finds pools and `فوتبال` finds "
+            "artificial turf. Results are ordered by relevance. Each result "
+            "includes its price, picture, rating, and availability. "
             "A missing or blank `q` returns every facility. No authentication "
             "is required."
         ),

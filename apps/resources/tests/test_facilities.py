@@ -89,14 +89,74 @@ class FacilitySearchTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"facilities": []})
 
-    def test_response_contains_public_facility_fields(self):
+    def test_response_contains_public_listing_fields(self):
         response = self.search("soccer")
 
         facility = response.json()["facilities"][0]
         self.assertEqual(
             set(facility),
-            {"id", "name", "type", "location"},
+            {
+                "id",
+                "name",
+                "description",
+                "category",
+                "type",
+                "location",
+                "price",
+                "picture",
+                "rating",
+                "availability",
+            },
         )
         self.assertEqual(facility["name"], "Soccer Field A")
         self.assertEqual(facility["type"], "Soccer Field")
         self.assertEqual(facility["location"], "North Park")
+        self.assertEqual(facility["description"], "")
+        self.assertEqual(facility["category"], "")
+        self.assertEqual(facility["price"], 0)
+        self.assertEqual(facility["picture"], "")
+        self.assertEqual(facility["rating"], 0)
+        self.assertTrue(facility["availability"])
+
+    def test_response_contains_listing_details(self):
+        Facility.objects.create(
+            name="Sunset Yoga Studio",
+            description="Small-group yoga and meditation classes.",
+            category="Fitness",
+            type="Yoga Studio",
+            location="West Side",
+            price="280000.00",
+            picture="https://picsum.photos/seed/yoga-test/800/600",
+            rating="4.7",
+            availability=False,
+        )
+
+        response = self.search("meditation")
+
+        self.assertEqual(response.status_code, 200)
+        facility = response.json()["facilities"][0]
+        self.assertEqual(facility["name"], "Sunset Yoga Studio")
+        self.assertEqual(
+            facility["description"],
+            "Small-group yoga and meditation classes.",
+        )
+        self.assertEqual(facility["category"], "Fitness")
+        self.assertEqual(facility["price"], 280000)
+        self.assertEqual(
+            facility["picture"],
+            "https://picsum.photos/seed/yoga-test/800/600",
+        )
+        self.assertEqual(facility["rating"], 4.7)
+        self.assertFalse(facility["availability"])
+
+    def test_searches_description_and_category(self):
+        Facility.objects.create(
+            name="Northside Arena",
+            description="Hosts weekly volleyball tournaments.",
+            category="Volleyball",
+            type="Sports Hall",
+            location="North Park",
+        )
+
+        self.assertEqual(self.names(self.search("tournaments")), ["Northside Arena"])
+        self.assertEqual(self.names(self.search("volleyball")), ["Northside Arena"])

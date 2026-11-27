@@ -10,9 +10,31 @@ from .models import Facility
 class FacilitySerializer(serializers.ModelSerializer):
     """Public facility shape returned by search."""
 
+    price = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        coerce_to_string=False,
+    )
+    rating = serializers.DecimalField(
+        max_digits=2,
+        decimal_places=1,
+        coerce_to_string=False,
+    )
+
     class Meta:
         model = Facility
-        fields = ("id", "name", "type", "location")
+        fields = (
+            "id",
+            "name",
+            "description",
+            "category",
+            "type",
+            "location",
+            "price",
+            "picture",
+            "rating",
+            "availability",
+        )
 
 
 class FacilityListResponseSerializer(serializers.Serializer):

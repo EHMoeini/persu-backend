@@ -80,9 +80,32 @@ RELATED_TERMS: dict[str, tuple[str, ...]] = {
     "turf": ("چمن مصنوعی", "چمن"),
     "artificial": ("چمن مصنوعی",),
     "artificial turf": ("چمن مصنوعی", "چمن", "turf"),
+    "basketball": ("بسکتبال",),
+    "بسکتبال": ("basketball",),
+    "volleyball": ("والیبال",),
+    "والیبال": ("volleyball",),
+    "fitness": ("بدنسازی", "باشگاه بدنسازی", "gym"),
+    "gym": ("بدنسازی", "باشگاه بدنسازی", "fitness"),
+    "بدنسازی": ("fitness", "gym", "باشگاه بدنسازی"),
+    "yoga": ("یوگا",),
+    "یوگا": ("yoga",),
+    "martial arts": ("رزمی", "dojo"),
+    "رزمی": ("martial arts", "dojo"),
+    "climbing": ("سنگ نوردی", "climbing wall"),
+    "سنگ نوردی": ("climbing", "climbing wall"),
+    "table tennis": ("پینگ پنگ", "table tennis"),
+    "پینگ پنگ": ("table tennis",),
+    "tehran": ("تهران",),
+    "تهران": ("tehran",),
 }
 
-FIELD_WEIGHTS = {"name": 5, "type": 3, "location": 2}
+FIELD_WEIGHTS = {
+    "name": 5,
+    "type": 3,
+    "category": 3,
+    "location": 2,
+    "description": 1,
+}
 
 
 def normalize_text(value: str) -> str:
@@ -132,7 +155,9 @@ def _normalized_fields(facility: Facility) -> dict[str, str]:
     return {
         "name": normalize_text(facility.name),
         "type": normalize_text(facility.type),
+        "category": normalize_text(facility.category),
         "location": normalize_text(facility.location),
+        "description": normalize_text(facility.description),
     }
 
 
