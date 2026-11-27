@@ -263,4 +263,150 @@ MOCK_FACILITIES: tuple[dict[str, object], ...] = (
         "rating": Decimal("4.3"),
         "availability": True,
     },
+    {
+        "key": "enghelab-artificial-turf-fa",
+        "name": "چمن مصنوعی انقلاب",
+        "description": (
+            "زمین چمن مصنوعی استاندارد برای فوتبال و فوتسال با نورپردازی "
+            "شبانه و رختکن مجهز."
+        ),
+        "category": "Football",
+        "type": "چمن مصنوعی",
+        "location": "تهران، مجموعه ورزشی انقلاب",
+        "price": Decimal("980000.00"),
+        "picture": "https://picsum.photos/seed/enghelab-turf-fa/800/600",
+        "rating": Decimal("4.5"),
+        "availability": True,
+    },
+    {
+        "key": "riverside-tennis-court-fa",
+        "name": "زمین تنیس رودخانه",
+        "description": (
+            "دو زمین تنیس با کف سخت و نورپردازی شبانه، همراه با اجاره راکت."
+        ),
+        "category": "Racket Sports",
+        "type": "زمین تنیس",
+        "location": "تهران، رودخانه",
+        "price": Decimal("520000.00"),
+        "picture": "https://picsum.photos/seed/riverside-tennis-fa/800/600",
+        "rating": Decimal("4.4"),
+        "availability": True,
+    },
+    {
+        "key": "persepolis-badminton-hall-fa",
+        "name": "سالن بدمینتون پرسپولیس",
+        "description": (
+            "سالن بدمینتون سرپوشیده با شش زمین استاندارد و کف چوبی."
+        ),
+        "category": "Racket Sports",
+        "type": "سالن بدمینتون",
+        "location": "تهران، شهرک غرب",
+        "price": Decimal("430000.00"),
+        "picture": "https://picsum.photos/seed/badminton-hall-fa/800/600",
+        "rating": Decimal("4.3"),
+        "availability": True,
+    },
+    {
+        "key": "mirdamad-table-tennis-club-fa",
+        "name": "باشگاه تنیس روی میز میرداماد",
+        "description": (
+            "باشگاه تنیس روی میز با هشت میز مسابقه و کلاس‌های آموزشی برای "
+            "همه سطوح."
+        ),
+        "category": "Racket Sports",
+        "type": "سالن تنیس روی میز",
+        "location": "تهران، میرداماد",
+        "price": Decimal("190000.00"),
+        "picture": "https://picsum.photos/seed/table-tennis-fa/800/600",
+        "rating": Decimal("4.1"),
+        "availability": True,
+    },
+    {
+        "key": "iron-gym-fitness-center-fa",
+        "name": "باشگاه بدنسازی آهن",
+        "description": (
+            "باشگاه بدنسازی مجهز به دستگاه‌های قدرتی، وزنه آزاد و منطقه هوازی."
+        ),
+        "category": "Fitness",
+        "type": "باشگاه بدنسازی",
+        "location": "تهران، تجریش",
+        "price": Decimal("260000.00"),
+        "picture": "https://picsum.photos/seed/iron-gym-fa/800/600",
+        "rating": Decimal("4.8"),
+        "availability": True,
+    },
+    {
+        "key": "serenity-yoga-studio-fa",
+        "name": "استودیو یوگا آرامش",
+        "description": (
+            "استودیو یوگا با کلاس‌های هاتا و وینیاسا و جلسات مدیتیشن در "
+            "گروه‌های کوچک."
+        ),
+        "category": "Fitness",
+        "type": "استودیو یوگا",
+        "location": "تهران، زعفرانیه",
+        "price": Decimal("290000.00"),
+        "picture": "https://picsum.photos/seed/serenity-yoga-fa/800/600",
+        "rating": Decimal("4.6"),
+        "availability": True,
+    },
+    {
+        "key": "district-6-basketball-court-fa",
+        "name": "زمین بسکتبال منطقه شش",
+        "description": (
+            "زمین بسکتبال روباز با تخته برگشت و نورپردازی شبانه برای بازی‌های "
+            "سه به سه."
+        ),
+        "category": "Basketball",
+        "type": "زمین بسکتبال",
+        "location": "تهران، منطقه ۶",
+        "price": Decimal("310000.00"),
+        "picture": "https://picsum.photos/seed/basketball-court-fa/800/600",
+        "rating": Decimal("4.2"),
+        "availability": True,
+    },
+    {
+        "key": "chitgar-beach-volleyball-court-fa",
+        "name": "زمین والیبال ساحلی چیتگر",
+        "description": (
+            "زمین والیبال ساحلی در کنار دریاچه چیتگر با تور و دوش."
+        ),
+        "category": "Volleyball",
+        "type": "زمین والیبال ساحلی",
+        "location": "تهران، دریاچه چیتگر",
+        "price": Decimal("460000.00"),
+        "picture": "https://picsum.photos/seed/beach-volleyball-fa/800/600",
+        "rating": Decimal("4.5"),
+        "availability": True,
+    },
+    {
+        "key": "samurai-martial-arts-dojo-fa",
+        "name": "دوجوی هنرهای رزمی سامورایی",
+        "description": (
+            "دوجوی سنتی برای آموزش کاراته، جودو و دفاع شخصی زیر نظر مربیان "
+            "مجاز."
+        ),
+        "category": "Martial Arts",
+        "type": "دوجو",
+        "location": "تهران، نارمک",
+        "price": Decimal("330000.00"),
+        "picture": "https://picsum.photos/seed/martial-arts-dojo-fa/800/600",
+        "rating": Decimal("4.4"),
+        "availability": True,
+    },
+    {
+        "key": "aras-climbing-wall-fa",
+        "name": "دیواره سنگ‌نوردی ارس",
+        "description": (
+            "سالن سنگ‌نوردی سرپوشیده با دیواره بولدرینگ، مسیرهای طناب و "
+            "کلاس‌های مبتدی."
+        ),
+        "category": "Climbing",
+        "type": "سالن سنگ‌نوردی",
+        "location": "تهران، عباس‌آباد",
+        "price": Decimal("410000.00"),
+        "picture": "https://picsum.photos/seed/aras-climbing-fa/800/600",
+        "rating": Decimal("4.5"),
+        "availability": True,
+    },
 )

@@ -116,9 +116,10 @@ is used. Always set a real password for a shared database.
 
 ### 4b. Seed optional mock facility listings
 
-The search API starts with an empty database. Populate it with realistic mock
-listings covering football, swimming, racket sports, fitness, basketball,
-volleyball, martial arts, climbing, and multi-sport venues:
+The search API starts with an empty database. Populate it with 26 realistic
+mock listings — 13 English and 13 Persian — covering football, swimming, racket
+sports, fitness, basketball, volleyball, martial arts, climbing, and multi-sport
+venues:
 
 ```bash
 python manage.py seed_facilities

@@ -113,6 +113,38 @@ class SeedFacilitiesCommandTests(APITestCase):
             self.assertLessEqual(facility["rating"], 5)
             self.assertIsInstance(facility["availability"], bool)
 
+    def test_seed_includes_persian_listings_for_every_category(self):
+        self.seed()
+
+        facilities = list(Facility.objects.all())
+        persian = [
+            facility
+            for facility in facilities
+            if any("\u0600" <= char <= "\u06ff" for char in facility.name)
+        ]
+
+        self.assertGreaterEqual(len(persian), 10)
+        self.assertEqual(
+            {facility.category for facility in persian},
+            {facility.category for facility in facilities},
+        )
+
+    def test_persian_seeded_listings_are_searchable(self):
+        self.seed()
+
+        cases = {
+            "بسکتبال": "زمین بسکتبال منطقه شش",
+            "یوگا": "استودیو یوگا آرامش",
+            "سنگ نوردی": "دیواره سنگ‌نوردی ارس",
+        }
+        for query, expected_name in cases.items():
+            with self.subTest(query=query):
+                response = self.client.get("/api/facilities", {"q": query})
+                names = [
+                    item["name"] for item in response.json()["facilities"]
+                ]
+                self.assertIn(expected_name, names)
+
     def test_seeded_listings_are_returned_by_the_search_api(self):
         self.seed()
 
