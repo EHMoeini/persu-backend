@@ -56,7 +56,8 @@ Optional mock facility data for the public search API:
 .\.venv\Scripts\python manage.py seed_facilities
 ```
 
-Rerun the command safely at any time, or use `--reset` to recreate only the mock
+Rerun the command safely at any time. It removes retired English mock rows and
+updates the current Persian listings; use `--reset` to recreate only the mock
 listings:
 
 ```powershell
@@ -64,8 +65,8 @@ listings:
 ```
 
 Use `--if-empty` to seed only when no real facilities exist; existing mock rows
-are updated and extended. The deployment startup script uses this option
-automatically.
+are updated, retired English rows are removed, and new listings are added. The
+deployment startup script uses this option automatically.
 
 Optional admin account:
 

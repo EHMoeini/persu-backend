@@ -117,17 +117,19 @@ is used. Always set a real password for a shared database.
 ### 4b. Seed optional mock facility listings
 
 The search API starts with an empty database. Populate it with 26 realistic
-mock listings — 13 English and 13 Persian — covering football, swimming, racket
-sports, fitness, basketball, volleyball, martial arts, climbing, and multi-sport
-venues:
+Persian mock listings covering football and futsal pitches, swimming pools,
+tennis, badminton, table tennis, gyms, yoga, basketball, volleyball, martial
+arts, climbing, and a multi-sport hall:
 
 ```bash
 python manage.py seed_facilities
 ```
 
 The command is idempotent: each mock listing has a stable ID, so rerunning it
-updates those rows instead of creating duplicates. It never modifies facilities
-created by real users. To delete and recreate only the mock listings:
+updates those rows instead of creating duplicates. It also removes mock rows
+from retired catalogue versions, including the old English listings, while
+never modifying facilities created by real users. To delete and recreate only
+the current mock listings:
 
 ```bash
 python manage.py seed_facilities --reset
@@ -135,13 +137,14 @@ python manage.py seed_facilities --reset
 
 The deployment startup script runs `python manage.py seed_facilities --if-empty`
 after migrations, so an empty database is populated automatically, an older
-mock-only database is updated with any newly added mock listings, and a
-database that already contains real facilities is left untouched. When running
-`runserver` directly, run the seed command manually.
+mock-only database is updated with the current Persian listings and has retired
+English mock rows removed, and a database that already contains real facilities
+is left untouched. When running `runserver` directly, run the seed command
+manually.
 
 The mock definitions live in `apps/resources/mock_data.py`, so they are easy to
-update or extend. Replace the placeholder pictures with production image URLs
-when real listings are added.
+update or extend. Pictures use Wikimedia Commons placeholders; replace them with
+production image URLs and confirm licensing or attribution before launch.
 
 ### 5. Run the development server
 
@@ -408,14 +411,14 @@ Example response:
 {
   "facilities": [
     {
-      "id": "22e7597f-5f3f-5046-9384-2699b9e08049",
-      "name": "Olympic Swimming Pool",
-      "description": "Fifty-meter indoor swimming pool with eight lanes, a children's pool, and certified lifeguards.",
+      "id": "0d92ff6c-71c4-5b18-be83-d42db126cfe8",
+      "name": "استخر المپیک تهران",
+      "description": "استخر ۵۰ متری با هشت خط، سکوی شروع، استخر کودکان و نجات‌غریق.",
       "category": "Swimming",
-      "type": "Swimming Pool",
-      "location": "Vanak, Tehran",
+      "type": "استخر المپیک",
+      "location": "تهران، ونک",
       "price": 350000.0,
-      "picture": "https://picsum.photos/seed/olympic-pool/800/600",
+      "picture": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c3/Swimming_Pool_lanes_and_starting_blocks.jpg/960px-Swimming_Pool_lanes_and_starting_blocks.jpg",
       "rating": 4.7,
       "availability": true
     }
